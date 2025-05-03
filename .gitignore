@@ -67,3 +67,6 @@ ehthumbs.db
 
 expo-env.d.ts
 # @end expo-cli
+
+.idea/
+res.json())

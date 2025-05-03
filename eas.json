@@ -1,21 +1,54 @@
 {
   "cli": {
-    "version": ">= 16.3.1",
-    "appVersionSource": "remote"
+    "version": ">= 7.6.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "developmentClient": false,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
+      }
     },
     "production": {
-      "autoIncrement": true
+      "developmentClient": false,
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
+      }
     }
   },
   "submit": {
-    "production": {}
+    "preview": {
+      "android": {
+        "serviceAccountKeyPath": "C:\\Users\\micha\\AppDevelopment\\GoogleCloudKeys\\single-inquiry-456719-q8-e1a3e3fdde04.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "C:\\Users\\micha\\AppDevelopment\\GoogleCloudKeys\\single-inquiry-456719-q8-e1a3e3fdde04.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }

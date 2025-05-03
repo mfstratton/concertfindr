@@ -3,11 +3,21 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Sentry from 'sentry-expo'; // <-- Add Sentry import
 
 // Import your screens
 import HomeScreen from './src/screens/HomeScreen'; // Assuming you have a HomeScreen
 import SearchScreen from './src/screens/SearchScreen'; // Assuming you have a SearchScreen
-import ResultsScreen from './src/screens/ResultsScreen'; // <-- Import the new screen
+import ResultsScreen from './src/screens/ResultsScreen'; // Assuming you have a ResultsScreen
+
+// --- Sentry Initialization ---
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN, // Uses the variable set on expo.dev
+  enableInExpoDevelopment: true, // Optional: Report errors during local dev too
+  debug: __DEV__, // Optional: Show Sentry logs in console during local dev
+  // tracesSampleRate: 1.0, // Optional: Can enable later for performance monitoring
+});
+// --- End Sentry Initialization ---
 
 const Stack = createNativeStackNavigator();
 

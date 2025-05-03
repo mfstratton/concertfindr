@@ -21,7 +21,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.concertfindr",
-      "versionCode": 13,
+      "versionCode": 14,
       "permissions": [
         "android.permission.INTERNET"
       ]
@@ -35,6 +35,14 @@
       }
     },
     "plugins": [
+      [
+        "sentry-expo",
+        {
+          "organization": "findr-labsllc",
+          "project": "react-native"
+        }
+      ]
     ]
   }
 }
+

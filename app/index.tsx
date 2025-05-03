@@ -13,13 +13,13 @@ import {
     KeyboardAvoidingView,
     ActivityIndicator,
     Linking,
-    // Image, // Not needed now
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
+import * as Sentry from 'sentry-expo'; // Import Sentry
 
 // Access API keys from environment variables
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -35,9 +35,8 @@ interface MapboxSuggestion {
     place_formatted?: string;
     context?: {
         country?: { id: string; name: string; country_code: string; country_code_alpha_3: string };
-        region?: { id: string; name: string; region_code?: string; region_code_full?: string }; // Make region_code optional
+        region?: { id: string; name: string; region_code?: string; region_code_full?: string };
         district?: { id: string; name: string };
-        // Add other context types if needed
     };
     language?: string;
     maki?: string;
@@ -94,18 +93,12 @@ export default function IndexScreen() {
 
 
     // --- Helper Functions ---
-    // --- UPDATED to combine name and state code ---
     const formatSuggestionText = (suggestion: MapboxSuggestion | undefined): string => {
         if (!suggestion) return '';
         const name = suggestion.name;
-        // Use optional chaining to safely access nested properties
         const regionCode = suggestion.context?.region?.region_code;
-
-        // If region code exists, combine; otherwise just use name
         return regionCode ? `${name}, ${regionCode}` : name;
     };
-    // --- END OF UPDATE ---
-
     const formatDate = (date: Date | null): string => { if (!date) return 'Select Date'; return date.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }); }
     const formatTimeAmPm = (timeString: string | undefined): string => { if (!timeString) return ''; const timeStringParts = timeString.split(':'); if (timeStringParts.length < 2) return timeString; const hours24 = parseInt(timeStringParts[0], 10); const minutes = timeStringParts[1]; if (isNaN(hours24)) return timeString; const ampm = hours24 >= 12 ? 'PM' : 'AM'; let hours12 = hours24 % 12; if (hours12 === 0) { hours12 = 12; } return `${hours12}:${minutes} ${ampm}`; };
     const toLocalDateString = (date: Date): string => {
@@ -114,10 +107,16 @@ export default function IndexScreen() {
         return localDate.toISOString().slice(0, 10);
     };
 
-    // --- Debounced Fetch for Mapbox Autocomplete ---
+    // --- Debounced Fetch for Mapbox Autocomplete with Sentry ---
     const fetchCitySuggestions = async (text: string) => {
+        const currentSessionToken = sessionToken; // Capture current session token
+
+        // Log attempt to Sentry
+        Sentry.captureMessage(`Mapbox suggest API call initiated for query: "${text}". Token present: ${!!mapboxAccessToken}. Session: ${currentSessionToken}`);
+        console.log(`Mapbox suggest API call initiated. Token present: ${!!mapboxAccessToken}. Session: ${currentSessionToken}`);
+
         if (!mapboxAccessToken) { console.warn("Mapbox Access Token missing."); setIsCityLoading(false); return; }
-        if (!sessionToken) { console.warn("Mapbox session token not ready."); setIsCityLoading(false); return; }
+        if (!currentSessionToken) { console.warn("Mapbox session token not ready."); setIsCityLoading(false); return; }
         if (text.length <= 2) { setSuggestions([]); setShowSuggestions(false); setIsCityLoading(false); return; }
 
         setIsCityLoading(true);
@@ -125,20 +124,30 @@ export default function IndexScreen() {
         const country = 'US';
         const language = 'en';
         const limit = 5;
-        const apiUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(text)}&language=${language}&limit=${limit}&types=${types}&country=${country}&session_token=${sessionToken}&access_token=${mapboxAccessToken}`;
+        const apiUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(text)}&language=${language}&limit=${limit}&types=${types}&country=${country}&session_token=${currentSessionToken}&access_token=${mapboxAccessToken}`;
 
+        // --- Wrap API Call in try...catch ---
         try {
             const response = await fetch(apiUrl);
 
+            // Explicitly check for non-OK HTTP status codes
             if (!response.ok) {
-                let errorData; try { errorData = await response.json(); } catch (e) {}
-                 console.error("Mapbox Suggest HTTP Error:", response.status, errorData || 'Could not parse error response');
-                throw new Error(`Mapbox Suggest request failed with status ${response.status}`);
+                let errorData;
+                try {
+                    errorData = await response.json();
+                } catch (e) {
+                    errorData = 'Could not parse error response body.';
+                }
+                const errorDetails = `Mapbox Suggest HTTP Error ${response.status}: ${JSON.stringify(errorData)}`;
+                console.error(errorDetails); // Log locally
+                throw new Error(errorDetails); // Throw error to trigger the catch block
             }
+
             const data = await response.json();
 
-            // Keep the raw log for now if needed
-            // console.log("Mapbox Suggestions Raw:", JSON.stringify(data.suggestions, null, 2));
+            // Log successful response structure to Sentry (optional)
+            Sentry.captureMessage(`Mapbox suggest API success. Response keys: ${Object.keys(data)}`);
+            console.log('Mapbox Suggest Success Response:', data); // Log locally
 
             if (data.suggestions) {
                 setSuggestions(data.suggestions);
@@ -146,19 +155,27 @@ export default function IndexScreen() {
             } else {
                 setSuggestions([]);
                 setShowSuggestions(false);
-                 console.log("Mapbox Suggest returned OK but no suggestions field:", data);
+                console.log("Mapbox Suggest returned OK but no suggestions field:", data);
             }
         } catch (error: any) {
-            console.error("Mapbox Suggest fetch/processing Error:", error.message || error);
+            // --- This block runs if any error occurred in the try block ---
+            console.error("Error during Mapbox Suggest API call:", error); // Log the full error locally
+
+            // **** SEND THE ERROR TO SENTRY ****
+            Sentry.captureException(error);
+
+            // --- Handle the error in the UI ---
             setSuggestions([]);
             setShowSuggestions(false);
+            // Optionally: setErrorMessage("Failed to load suggestions.");
         } finally {
             setIsCityLoading(false);
         }
+        // --- End of try...catch block ---
     };
 
     // Debounce is active
-    const debouncedFetchSuggestions = useCallback(debounce(fetchCitySuggestions, 300), [mapboxAccessToken, sessionToken]);
+    const debouncedFetchSuggestions = useCallback(debounce(fetchCitySuggestions, 300), [mapboxAccessToken, sessionToken]); // Include sessionToken dependency
 
     // --- Handlers ---
     const handleCityChange = (text: string) => {
@@ -181,23 +198,20 @@ export default function IndexScreen() {
         }
     };
 
-    // --- UPDATED to set input field correctly ---
     const onSuggestionPress = (suggestion: MapboxSuggestion) => {
         const mapboxId = suggestion.mapbox_id;
         const primaryName = suggestion.name;
-        // Use the same formatting logic as the list display
         const displayValue = formatSuggestionText(suggestion);
 
-        setCity(displayValue); // Set input field to "City, ST"
+        setCity(displayValue);
         setSelectedMapboxId(mapboxId);
-        setSelectedCityName(primaryName); // Still store the primary name if needed elsewhere
+        setSelectedCityName(primaryName);
         setSuggestions([]);
         setShowSuggestions(false);
         Keyboard.dismiss();
         interactionStarted.current = false;
-        setSessionToken(uuidv4());
+        setSessionToken(uuidv4()); // Reset session token after selection
     };
-    // --- END OF UPDATE ---
 
 
     const handleClearCity = () => {
@@ -209,19 +223,20 @@ export default function IndexScreen() {
         setShowSuggestions(false);
         setIsCityLoading(false);
         interactionStarted.current = false;
-        setSessionToken(uuidv4());
+        setSessionToken(uuidv4()); // Reset session token on clear
     };
     const onChangeStartDate = (event: DateTimePickerEvent, selectedDate?: Date) => { if (Platform.OS === 'android') { setShowStartDatePicker(false); } if (event.type === 'set' && selectedDate) { setStartDate(selectedDate); } if (Platform.OS === 'ios' && event.type !== 'set') { setShowStartDatePicker(false); } };
     const onChangeEndDate = (event: DateTimePickerEvent, selectedDate?: Date) => { if (Platform.OS === 'android') { setShowEndDatePicker(false); } if (event.type === 'set' && selectedDate) { setEndDate(selectedDate); if (startDate && selectedDate < startDate) { Alert.alert("Invalid Range", "End date cannot be before start date."); setEndDate(null); } } if (Platform.OS === 'ios' && event.type !== 'set') { setShowEndDatePicker(false); } };
     const showStartDatepicker = () => { setShowStartDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
     const showEndDatepicker = () => { setShowEndDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
 
-    // --- Ticketmaster Search Function (Includes Caching) ---
+    // --- Ticketmaster Search Function (Includes Caching and Sentry) ---
     const handleConcertSearch = async () => {
         setSearchAttempted(true); Keyboard.dismiss(); setShowSuggestions(false); debouncedFetchSuggestions.cancel();
         if (!selectedMapboxId || !startDate || !endDate) { Alert.alert("Validation Error", "Please select a city from suggestions and both dates."); return; }
-        if (!ticketmasterApiKey || !mapboxAccessToken) { Alert.alert("API Key Error", "API keys not loaded."); return; }
-        if (!sessionToken) { Alert.alert("Error", "Session token missing."); return; }
+        if (!ticketmasterApiKey || !mapboxAccessToken) { Alert.alert("API Key Error", "API keys not loaded."); Sentry.captureMessage("API Key Error during concert search"); return; }
+        const currentSessionToken = sessionToken; // Capture current session token
+        if (!currentSessionToken) { Alert.alert("Error", "Session token missing."); Sentry.captureMessage("Session token missing during concert search"); return; }
 
         setIsConcertLoading(true); setConcertError(null); setConcerts([]);
         const userStartDateString = toLocalDateString(startDate);
@@ -231,25 +246,28 @@ export default function IndexScreen() {
         let lat: number | undefined;
         let lng: number | undefined;
 
+        // --- Wrap entire search logic in try...catch ---
         try {
-            // Check cache first
+            // --- Step A: Get Coordinates (Cache or Mapbox Retrieve) ---
             if (coordCache.current[selectedMapboxId]) {
                 console.log("Using cached coordinates for Mapbox ID:", selectedMapboxId);
+                Sentry.captureMessage(`Using cached coordinates for Mapbox ID: ${selectedMapboxId}`);
                 const cachedCoords = coordCache.current[selectedMapboxId];
                 lat = cachedCoords.lat;
                 lng = cachedCoords.lng;
             } else {
-                // Fetch from Mapbox Retrieve API
                 console.log("Coordinates not cached, fetching from Mapbox Retrieve API for ID:", selectedMapboxId);
-                const retrieveUrl = `https://api.mapbox.com/search/searchbox/v1/retrieve/${selectedMapboxId}?session_token=${sessionToken}&access_token=${mapboxAccessToken}`;
+                Sentry.captureMessage(`Fetching coordinates from Mapbox Retrieve API for ID: ${selectedMapboxId}. Session: ${currentSessionToken}`);
+                const retrieveUrl = `https://api.mapbox.com/search/searchbox/v1/retrieve/${selectedMapboxId}?session_token=${currentSessionToken}&access_token=${mapboxAccessToken}`;
                 console.log("Requesting Mapbox Retrieve URL:", retrieveUrl);
 
                 const retrieveResponse = await fetch(retrieveUrl);
 
                 if (!retrieveResponse.ok) {
-                    let errorData; try { errorData = await retrieveResponse.json(); } catch (e) {}
-                    console.error("Mapbox Retrieve HTTP Error:", retrieveResponse.status, errorData || 'Could not parse error response');
-                    throw new Error(`Failed to get place coordinates (HTTP ${retrieveResponse.status})`);
+                    let errorData; try { errorData = await retrieveResponse.json(); } catch (e) { errorData = 'Could not parse error response body.'}
+                    const errorDetails = `Mapbox Retrieve HTTP Error ${retrieveResponse.status}: ${JSON.stringify(errorData)}`;
+                    console.error(errorDetails);
+                    throw new Error(errorDetails); // Throw to trigger catch
                 }
 
                 const retrieveData: MapboxRetrieveResponse = await retrieveResponse.json();
@@ -262,12 +280,12 @@ export default function IndexScreen() {
                     throw new Error('Could not extract coordinates from Mapbox retrieve response.');
                 }
 
-                // Store in cache
                 console.log(`Coordinates found: Lat ${lat}, Lng ${lng}. Storing in cache.`);
+                Sentry.captureMessage(`Mapbox Retrieve success for ID: ${selectedMapboxId}. Coords: ${lat}, ${lng}`);
                 coordCache.current[selectedMapboxId] = { lat, lng };
             }
 
-            // Step B: Ticketmaster Call
+            // --- Step B: Ticketmaster Call ---
             const radius = 30; const unit = "miles";
             const apiStartDateTime = startDate.toISOString().slice(0, 10) + 'T00:00:00Z';
             const dayAfterEndDate = new Date(endDate);
@@ -276,7 +294,18 @@ export default function IndexScreen() {
             const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=100`;
 
             console.log("Requesting Ticketmaster URL:", ticketmasterApiUrl);
-            const tmResponse = await fetch(ticketmasterApiUrl); if (!tmResponse.ok) { let errorMsg = `Ticketmaster API error! Status: ${tmResponse.status}`; try { const errorData = await tmResponse.json(); errorMsg += `: ${errorData?.fault?.faultstring || errorData?.errors?.[0]?.detail || 'Unknown TM error'}`; } catch (e) {} throw new Error(errorMsg); } const tmData = await tmResponse.json();
+            Sentry.captureMessage(`Requesting Ticketmaster API. Lat: ${lat}, Lng: ${lng}`);
+            const tmResponse = await fetch(ticketmasterApiUrl);
+
+            if (!tmResponse.ok) {
+                let errorMsg = `Ticketmaster API error! Status: ${tmResponse.status}`;
+                try { const errorData = await tmResponse.json(); errorMsg += `: ${errorData?.fault?.faultstring || errorData?.errors?.[0]?.detail || 'Unknown TM error'}`; } catch (e) {}
+                console.error(errorMsg);
+                throw new Error(errorMsg); // Throw to trigger catch
+            }
+
+            const tmData = await tmResponse.json();
+            Sentry.captureMessage(`Ticketmaster API success. Found ${tmData?._embedded?.events?.length ?? 0} raw events.`);
 
             let fetchedEvents: any[] = [];
             if (tmData._embedded && tmData._embedded.events) { fetchedEvents = tmData._embedded.events; }
@@ -287,14 +316,15 @@ export default function IndexScreen() {
             console.error("--- ERROR DURING SEARCH ---");
             console.error("Error Name:", err.name);
             console.error("Error Message:", err.message);
-            setConcertError(`Search failed: ${err.message}`);
+            Sentry.captureException(err); // Send the error to Sentry
+            setConcertError(`Search failed. Please check inputs or try again later.`); // User-friendly message
         } finally {
             setIsConcertLoading(false);
-            interactionStarted.current = false;
-            setSessionToken(uuidv4());
+            interactionStarted.current = false; // Reset interaction flag
+            setSessionToken(uuidv4()); // Generate new session token for next search
         }
+        // --- End of try...catch block ---
     };
-    // ---
 
     // --- UI Layout ---
     return (
@@ -327,7 +357,6 @@ export default function IndexScreen() {
                     {isCityLoading && city.length > 2 && (
                          <ActivityIndicator size="small" color="#6200EE" style={styles.cityLoadingIndicator} />
                      )}
-                    {/* Use updated formatSuggestionText */}
                     {showSuggestions && city.length > 0 && !selectedMapboxId && (
                         <FlatList
                             style={styles.suggestionsList}
@@ -363,7 +392,7 @@ export default function IndexScreen() {
                  </View>
 
                  {/* Button */}
-                <View style={styles.buttonContainer}><Button title="Search Concerts" onPress={handleConcertSearch} color="#007AFF" disabled={isConcertLoading || !selectedMapboxId} /></View>
+                <View style={styles.buttonContainer}><Button title="Search Concerts" onPress={handleConcertSearch} color="#007AFF" disabled={isConcertLoading || !selectedMapboxId || !startDate || !endDate} /></View>
 
                 {/* Results Area */}
                  <View style={styles.resultsArea}>{isConcertLoading && <ActivityIndicator size="large" color="#007AFF" />}{concertError && <Text style={styles.errorText}>{concertError}</Text>}{!isConcertLoading && !concertError && !searchAttempted && (<Text style={styles.noResultsText}>Enter criteria and search.</Text>)}{!isConcertLoading && !concertError && searchAttempted && concerts.length === 0 && (<Text style={styles.noResultsText}>No concerts found matching your criteria.</Text>)}{!isConcertLoading && !concertError && concerts.length > 0 && (<FlatList data={concerts} keyExtractor={(item) => item.id} renderItem={({ item }) => (<TouchableOpacity style={styles.concertItem} onPress={() => item.url && Linking.openURL(item.url)}><Text style={styles.concertName}>{item.name}</Text><Text style={styles.concertDate}>{item.dates?.start?.localDate} {formatTimeAmPm(item.dates?.start?.localTime)}</Text><Text style={styles.concertVenue}>{item._embedded?.venues?.[0]?.name} ({item._embedded?.venues?.[0]?.city?.name})</Text></TouchableOpacity>)} contentContainerStyle={{ paddingHorizontal: 5, paddingBottom: 50 }} />)}</View>
@@ -404,4 +433,3 @@ const styles = StyleSheet.create({
     errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
     noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, }
 });
-// --- End of app/index.tsx ---

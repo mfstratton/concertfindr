@@ -5,7 +5,8 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "userInterfaceStyle": "light",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -21,20 +22,27 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.concertfindr",
-      "versionCode": 14,
+      "versionCode": 16,
       "permissions": [
         "android.permission.INTERNET"
       ]
     },
     "web": {
+      "bundler": "metro",
+      "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "extra": {
-      "eas": {
-        "projectId": "92a86582-fd25-40e9-8744-ce5d11743631"
-      }
-    },
     "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
       [
         "sentry-expo",
         {
@@ -42,7 +50,14 @@
           "project": "react-native"
         }
       ]
-    ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "92a86582-fd25-40e9-8744-ce5d11743631"
+      }
+    }
   }
 }
-

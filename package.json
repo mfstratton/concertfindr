@@ -23,6 +23,7 @@
     "@types/lodash.debounce": "^4.0.9",
     "@types/uuid": "^10.0.0",
     "expo": "~53.0.0",
+    "expo-application": "~6.1.4",
     "expo-blur": "~14.1.4",
     "expo-constants": "~17.1.5",
     "expo-dev-client": "~5.1.8",

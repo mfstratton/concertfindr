@@ -42,13 +42,6 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ],
-      [
-        "sentry-expo",
-        {
-          "organization": "findr-labsllc",
-          "project": "react-native"
-        }
       ]
     ],
     "experiments": {
@@ -61,3 +54,4 @@
     }
   }
 }
+

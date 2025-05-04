@@ -3,7 +3,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-// import * as Sentry from 'sentry-expo'; // <-- Commented out Sentry import
+import * as Sentry from 'sentry-expo'; // <-- Uncommented Sentry import
 
 // Import your screens
 import HomeScreen from './src/screens/HomeScreen'; // Assuming you have a HomeScreen
@@ -11,11 +11,12 @@ import SearchScreen from './src/screens/SearchScreen'; // Assuming you have a Se
 import ResultsScreen from './src/screens/ResultsScreen'; // Assuming you have a ResultsScreen
 
 // --- Sentry Initialization ---
-// Sentry.init({                     // <-- Commented out init block start
-//   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-//   enableInExpoDevelopment: true,
-//   debug: __DEV__,
-// });                              // <-- Commented out init block end
+Sentry.init({                     // <-- Uncommented init block start
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN, // Uses the variable set on expo.dev
+  enableInExpoDevelopment: true, // Optional: Report errors during local dev too
+  debug: __DEV__, // Optional: Show Sentry logs in console during local dev
+  // tracesSampleRate: 1.0, // Optional: Can enable later for performance monitoring
+});                              // <-- Uncommented init block end
 // --- End Sentry Initialization ---
 
 const Stack = createNativeStackNavigator();

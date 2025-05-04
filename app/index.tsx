@@ -314,6 +314,7 @@ export default function IndexScreen() {
                     <TextInput
                         style={styles.input}
                         placeholder="Enter City (e.g., Chicago)"
+                        placeholderTextColor="#8e8e93" // Added explicit placeholder color
                         value={city}
                         onChangeText={handleCityChange}
                         autoCapitalize="words"

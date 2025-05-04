@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
-import * as Sentry from 'sentry-expo'; // Import Sentry
+// import * as Sentry from 'sentry-expo'; // Keep Sentry import commented out as well
 
 // Access API keys from environment variables
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -107,12 +107,12 @@ export default function IndexScreen() {
         return localDate.toISOString().slice(0, 10);
     };
 
-    // --- Debounced Fetch for Mapbox Autocomplete with Sentry ---
+    // --- Debounced Fetch for Mapbox Autocomplete (Sentry Calls Commented Out) ---
     const fetchCitySuggestions = async (text: string) => {
         const currentSessionToken = sessionToken; // Capture current session token
 
-        // Log attempt to Sentry
-        Sentry.captureMessage(`Mapbox suggest API call initiated for query: "${text}". Token present: ${!!mapboxAccessToken}. Session: ${currentSessionToken}`);
+        // // Log attempt to Sentry (Commented Out)
+        // Sentry.captureMessage(`Mapbox suggest API call initiated for query: "${text}". Token present: ${!!mapboxAccessToken}. Session: ${currentSessionToken}`);
         console.log(`Mapbox suggest API call initiated. Token present: ${!!mapboxAccessToken}. Session: ${currentSessionToken}`);
 
         if (!mapboxAccessToken) { console.warn("Mapbox Access Token missing."); setIsCityLoading(false); return; }
@@ -145,8 +145,8 @@ export default function IndexScreen() {
 
             const data = await response.json();
 
-            // Log successful response structure to Sentry (optional)
-            Sentry.captureMessage(`Mapbox suggest API success. Response keys: ${Object.keys(data)}`);
+            // // Log successful response structure to Sentry (Commented Out)
+            // Sentry.captureMessage(`Mapbox suggest API success. Response keys: ${Object.keys(data)}`);
             console.log('Mapbox Suggest Success Response:', data); // Log locally
 
             if (data.suggestions) {
@@ -161,8 +161,8 @@ export default function IndexScreen() {
             // --- This block runs if any error occurred in the try block ---
             console.error("Error during Mapbox Suggest API call:", error); // Log the full error locally
 
-            // **** SEND THE ERROR TO SENTRY ****
-            Sentry.captureException(error);
+            // // **** SEND THE ERROR TO SENTRY **** (Commented Out)
+            // Sentry.captureException(error);
 
             // --- Handle the error in the UI ---
             setSuggestions([]);
@@ -230,13 +230,13 @@ export default function IndexScreen() {
     const showStartDatepicker = () => { setShowStartDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
     const showEndDatepicker = () => { setShowEndDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
 
-    // --- Ticketmaster Search Function (Includes Caching and Sentry) ---
+    // --- Ticketmaster Search Function (Includes Caching, Sentry Calls Commented Out) ---
     const handleConcertSearch = async () => {
         setSearchAttempted(true); Keyboard.dismiss(); setShowSuggestions(false); debouncedFetchSuggestions.cancel();
         if (!selectedMapboxId || !startDate || !endDate) { Alert.alert("Validation Error", "Please select a city from suggestions and both dates."); return; }
-        if (!ticketmasterApiKey || !mapboxAccessToken) { Alert.alert("API Key Error", "API keys not loaded."); Sentry.captureMessage("API Key Error during concert search"); return; }
+        if (!ticketmasterApiKey || !mapboxAccessToken) { Alert.alert("API Key Error", "API keys not loaded."); /* Sentry.captureMessage("API Key Error during concert search"); */ return; }
         const currentSessionToken = sessionToken; // Capture current session token
-        if (!currentSessionToken) { Alert.alert("Error", "Session token missing."); Sentry.captureMessage("Session token missing during concert search"); return; }
+        if (!currentSessionToken) { Alert.alert("Error", "Session token missing."); /* Sentry.captureMessage("Session token missing during concert search"); */ return; }
 
         setIsConcertLoading(true); setConcertError(null); setConcerts([]);
         const userStartDateString = toLocalDateString(startDate);
@@ -251,13 +251,13 @@ export default function IndexScreen() {
             // --- Step A: Get Coordinates (Cache or Mapbox Retrieve) ---
             if (coordCache.current[selectedMapboxId]) {
                 console.log("Using cached coordinates for Mapbox ID:", selectedMapboxId);
-                Sentry.captureMessage(`Using cached coordinates for Mapbox ID: ${selectedMapboxId}`);
+                // Sentry.captureMessage(`Using cached coordinates for Mapbox ID: ${selectedMapboxId}`);
                 const cachedCoords = coordCache.current[selectedMapboxId];
                 lat = cachedCoords.lat;
                 lng = cachedCoords.lng;
             } else {
                 console.log("Coordinates not cached, fetching from Mapbox Retrieve API for ID:", selectedMapboxId);
-                Sentry.captureMessage(`Fetching coordinates from Mapbox Retrieve API for ID: ${selectedMapboxId}. Session: ${currentSessionToken}`);
+                // Sentry.captureMessage(`Fetching coordinates from Mapbox Retrieve API for ID: ${selectedMapboxId}. Session: ${currentSessionToken}`);
                 const retrieveUrl = `https://api.mapbox.com/search/searchbox/v1/retrieve/${selectedMapboxId}?session_token=${currentSessionToken}&access_token=${mapboxAccessToken}`;
                 console.log("Requesting Mapbox Retrieve URL:", retrieveUrl);
 
@@ -281,7 +281,7 @@ export default function IndexScreen() {
                 }
 
                 console.log(`Coordinates found: Lat ${lat}, Lng ${lng}. Storing in cache.`);
-                Sentry.captureMessage(`Mapbox Retrieve success for ID: ${selectedMapboxId}. Coords: ${lat}, ${lng}`);
+                // Sentry.captureMessage(`Mapbox Retrieve success for ID: ${selectedMapboxId}. Coords: ${lat}, ${lng}`);
                 coordCache.current[selectedMapboxId] = { lat, lng };
             }
 
@@ -294,7 +294,7 @@ export default function IndexScreen() {
             const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=100`;
 
             console.log("Requesting Ticketmaster URL:", ticketmasterApiUrl);
-            Sentry.captureMessage(`Requesting Ticketmaster API. Lat: ${lat}, Lng: ${lng}`);
+            // Sentry.captureMessage(`Requesting Ticketmaster API. Lat: ${lat}, Lng: ${lng}`);
             const tmResponse = await fetch(ticketmasterApiUrl);
 
             if (!tmResponse.ok) {
@@ -305,7 +305,7 @@ export default function IndexScreen() {
             }
 
             const tmData = await tmResponse.json();
-            Sentry.captureMessage(`Ticketmaster API success. Found ${tmData?._embedded?.events?.length ?? 0} raw events.`);
+            // Sentry.captureMessage(`Ticketmaster API success. Found ${tmData?._embedded?.events?.length ?? 0} raw events.`);
 
             let fetchedEvents: any[] = [];
             if (tmData._embedded && tmData._embedded.events) { fetchedEvents = tmData._embedded.events; }
@@ -316,7 +316,7 @@ export default function IndexScreen() {
             console.error("--- ERROR DURING SEARCH ---");
             console.error("Error Name:", err.name);
             console.error("Error Message:", err.message);
-            Sentry.captureException(err); // Send the error to Sentry
+            // Sentry.captureException(err); // Send the error to Sentry (Commented Out)
             setConcertError(`Search failed. Please check inputs or try again later.`); // User-friendly message
         } finally {
             setIsConcertLoading(false);

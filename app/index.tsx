@@ -19,13 +19,12 @@ import { Ionicons } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
-import { useRouter } from 'expo-router'; // Import useRouter
+import { useRouter } from 'expo-router';
 
 // Access API keys from environment variables
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
-// Ticketmaster API key is not needed on this screen anymore
 
-// Define interface for Mapbox Suggestion (can be moved to a types file later)
+// Define interface for Mapbox Suggestion
 interface MapboxSuggestion {
     name: string;
     mapbox_id: string;
@@ -37,7 +36,6 @@ interface MapboxSuggestion {
         country?: { id: string; name: string; country_code: string; country_code_alpha_3: string };
         region?: { id: string; name: string; region_code?: string; region_code_full?: string };
         district?: { id: string; name: string };
-        // Add other context types if needed
     };
     language?: string;
     maki?: string;
@@ -45,12 +43,12 @@ interface MapboxSuggestion {
 }
 
 export default function SearchInputScreen() {
-    const router = useRouter(); // Initialize router
+    const router = useRouter();
 
-    // --- State for Search Inputs ---
-    const [city, setCity] = useState('');
+    const [city, setCity] = useState(''); // This will hold "City, ST" after selection
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
-    const [selectedCityName, setSelectedCityName] = useState<string | null>(null); // To pass for display on results
+    // selectedCityName is no longer strictly needed to pass if 'city' holds the formatted name
+    // const [selectedCityName, setSelectedCityName] = useState<string | null>(null);
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
     const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -60,31 +58,27 @@ export default function SearchInputScreen() {
     const [isCityLoading, setIsCityLoading] = useState(false);
     const [sessionToken, setSessionToken] = useState<string | null>(null);
 
-    // --- Refs ---
     const interactionStarted = useRef(false);
 
-    // Generate session token on mount
     useEffect(() => {
         setSessionToken(uuidv4());
     }, []);
 
-
-    // --- Helper Functions ---
     const formatSuggestionText = (suggestion: MapboxSuggestion | undefined): string => {
         if (!suggestion) return '';
         const name = suggestion.name;
         const regionCode = suggestion.context?.region?.region_code;
         return regionCode ? `${name}, ${regionCode}` : name;
     };
-    const formatDate = (date: Date | null): string => { if (!date) return 'Select Date'; return date.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }); }
+
+    const formatDate = (date: Date | null): string => { if (!date) return 'Select Date'; return date.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }); };
+
     const toLocalDateString = (date: Date): string => {
         const offset = date.getTimezoneOffset() * 60000;
         const localDate = new Date(date.getTime() - offset);
         return localDate.toISOString().slice(0, 10);
     };
 
-
-    // --- Debounced Fetch for Mapbox Autocomplete ---
     const fetchCitySuggestions = async (text: string) => {
         const currentSessionToken = sessionToken;
         console.log(`Mapbox suggest API call initiated. Token present: ${!!mapboxAccessToken}. Session: ${currentSessionToken}`);
@@ -128,11 +122,10 @@ export default function SearchInputScreen() {
 
     const debouncedFetchSuggestions = useCallback(debounce(fetchCitySuggestions, 300), [mapboxAccessToken, sessionToken]);
 
-    // --- Handlers ---
     const handleCityChange = (text: string) => {
         setCity(text);
         setSelectedMapboxId(null);
-        setSelectedCityName(null);
+        // setSelectedCityName(null); // Not strictly needed if 'city' state will hold formatted name
         if (!interactionStarted.current && text.length > 0) {
             interactionStarted.current = true;
             if (!sessionToken) setSessionToken(uuidv4());
@@ -151,12 +144,11 @@ export default function SearchInputScreen() {
 
     const onSuggestionPress = (suggestion: MapboxSuggestion) => {
         const mapboxId = suggestion.mapbox_id;
-        const primaryName = suggestion.name; // Store the primary name
-        const displayValue = formatSuggestionText(suggestion);
+        const displayValue = formatSuggestionText(suggestion); // This is "City, ST"
 
-        setCity(displayValue);
+        setCity(displayValue); // Set the input field to the formatted text
         setSelectedMapboxId(mapboxId);
-        setSelectedCityName(primaryName); // Set the primary city name
+        // setSelectedCityName(suggestion.name); // Still useful if you need just the city name internally
         setSuggestions([]);
         setShowSuggestions(false);
         Keyboard.dismiss();
@@ -168,54 +160,52 @@ export default function SearchInputScreen() {
         debouncedFetchSuggestions.cancel();
         setCity('');
         setSelectedMapboxId(null);
-        setSelectedCityName(null);
+        // setSelectedCityName(null);
         setSuggestions([]);
         setShowSuggestions(false);
         setIsCityLoading(false);
         interactionStarted.current = false;
         setSessionToken(uuidv4());
     };
+
     const onChangeStartDate = (event: DateTimePickerEvent, selectedDate?: Date) => { if (Platform.OS === 'android') { setShowStartDatePicker(false); } if (event.type === 'set' && selectedDate) { setStartDate(selectedDate); } if (Platform.OS === 'ios' && event.type !== 'set') { setShowStartDatePicker(false); } };
     const onChangeEndDate = (event: DateTimePickerEvent, selectedDate?: Date) => { if (Platform.OS === 'android') { setShowEndDatePicker(false); } if (event.type === 'set' && selectedDate) { setEndDate(selectedDate); if (startDate && selectedDate < startDate) { Alert.alert("Invalid Range", "End date cannot be before start date."); setEndDate(null); } } if (Platform.OS === 'ios' && event.type !== 'set') { setShowEndDatePicker(false); } };
     const showStartDatepicker = () => { setShowStartDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
     const showEndDatepicker = () => { setShowEndDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
 
-    // --- Navigate to Results Screen ---
     const handleNavigateToResults = () => {
         Keyboard.dismiss();
         setShowSuggestions(false);
         debouncedFetchSuggestions.cancel();
 
-        if (!selectedMapboxId || !startDate || !endDate || !selectedCityName) {
+        if (!selectedMapboxId || !startDate || !endDate || !city) { // Check 'city' which holds the formatted name
             Alert.alert("Validation Error", "Please select a city from suggestions and both dates.");
             return;
         }
-        if (!mapboxAccessToken) { // Keep this check for the retrieve call on the next screen
+        if (!mapboxAccessToken) {
             Alert.alert("API Key Error", "Mapbox API key not loaded.");
             return;
         }
 
         const params = {
             mapboxId: selectedMapboxId,
-            cityName: selectedCityName, // Pass the city name for display
+            formattedCityName: city, // Pass the full "City, ST" string
             startDate: toLocalDateString(startDate),
             endDate: toLocalDateString(endDate),
-            sessionToken: sessionToken || uuidv4() // Pass current or new session token
+            sessionToken: sessionToken || uuidv4()
         };
 
         router.push({ pathname: "/results", params: params });
-        interactionStarted.current = false; // Reset for next search session
-        setSessionToken(uuidv4()); // Generate new session token for next search
+        interactionStarted.current = false;
+        setSessionToken(uuidv4());
     };
 
-    // --- UI Layout ---
     return (
          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingContainer}>
             <View style={styles.container}>
                 <Text style={styles.title}> Find Concerts </Text>
                 <Text style={styles.tagline}>ConcertFindr, all you need is a city and a date!</Text>
 
-                {/* City Input */}
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
@@ -256,7 +246,6 @@ export default function SearchInputScreen() {
                         />
                     )}
                 </View>
-                {/* Date Pickers */}
                 <TouchableOpacity onPress={showStartDatepicker} style={styles.dateButton}>
                     <Text style={styles.dateButtonText}>Start Date: {formatDate(startDate)}</Text>
                 </TouchableOpacity>
@@ -266,7 +255,6 @@ export default function SearchInputScreen() {
                 {showStartDatePicker && (<DateTimePicker testID="startDatePicker" value={startDate || new Date()} mode="date" display="default" onChange={onChangeStartDate}/>)}
                 {showEndDatePicker && (<DateTimePicker testID="endDatePicker" value={endDate || startDate || new Date()} mode="date" display="default" onChange={onChangeEndDate} minimumDate={startDate || undefined}/>)}
 
-                {/* Mapbox Attribution */}
                 <View style={styles.attributionContainer}>
                     <Text style={styles.poweredByText}>
                         © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text>
@@ -275,7 +263,6 @@ export default function SearchInputScreen() {
                     </Text>
                 </View>
 
-                {/* Search Button */}
                 <View style={styles.buttonContainer}>
                    <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} />
                 </View>
@@ -284,7 +271,6 @@ export default function SearchInputScreen() {
      );
 }
 
-// Styles (Copied from your previous version, ensure they are appropriate)
 const styles = StyleSheet.create({
     keyboardAvoidingContainer: { flex: 1 },
     container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center', backgroundColor: '#FFFFFF' },

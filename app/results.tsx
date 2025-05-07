@@ -19,13 +19,13 @@ import { v4 as uuidv4 } from 'uuid';
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 const ticketmasterApiKey = process.env.EXPO_PUBLIC_TICKETMASTER_API_KEY;
 
-// Define interface for cached coordinates (can be moved to a types file)
+// Define interface for cached coordinates
 interface Coordinates {
     lat: number;
     lng: number;
 }
 
-// Define interface for Mapbox Retrieve Response (can be moved to a types file)
+// Define interface for Mapbox Retrieve Response
 interface MapboxRetrieveResponse {
     type: "FeatureCollection";
     features: {
@@ -41,12 +41,11 @@ interface MapboxRetrieveResponse {
 
 export default function ResultsScreen() {
     const router = useRouter();
-    // Ensure type safety for params
     const params = useLocalSearchParams<{
         mapboxId?: string,
-        cityName?: string,
-        startDate?: string, // Expected as YYYY-MM-DD string
-        endDate?: string,   // Expected as YYYY-MM-DD string
+        formattedCityName?: string, // Changed from cityName
+        startDate?: string,
+        endDate?: string,
         sessionToken?: string
     }>();
 
@@ -55,7 +54,6 @@ export default function ResultsScreen() {
     const [error, setError] = useState<string | null>(null);
     const [searchTitle, setSearchTitle] = useState<string>('Concert Results');
 
-    // Using a ref for coordCache as it doesn't need to trigger re-renders
     const coordCache = useRef<Record<string, Coordinates>>({});
 
     const formatTimeAmPm = (timeString: string | undefined): string => {
@@ -71,27 +69,25 @@ export default function ResultsScreen() {
         return `${hours12}:${minutes} ${ampm}`;
     };
 
-    // Helper to format date string (YYYY-MM-DD) to a more readable format
     const formatDisplayDate = (dateString: string | undefined): string => {
         if (!dateString) return '';
         const parts = dateString.split('-');
         if (parts.length === 3) {
-            // Assuming dateString is YYYY-MM-DD, convert to MM/DD/YYYY for display
             return `${parts[1]}/${parts[2]}/${parts[0]}`;
         }
-        return dateString; // Fallback if not in expected format
+        return dateString;
     };
 
 
     useEffect(() => {
-        if (params.mapboxId && params.startDate && params.endDate && params.cityName) {
-            setSearchTitle(`Concerts in ${params.cityName}`);
+        if (params.mapboxId && params.startDate && params.endDate && params.formattedCityName) {
+            setSearchTitle(`Concerts in ${params.formattedCityName}`); // Use formattedCityName
             fetchConcerts();
         } else {
             setError("Search parameters are missing.");
             console.error("Missing parameters for ResultsScreen:", params);
         }
-    }, [params.mapboxId, params.startDate, params.endDate, params.cityName]);
+    }, [params.mapboxId, params.startDate, params.endDate, params.formattedCityName]);
 
     const fetchConcerts = async () => {
         if (!params.mapboxId || !params.startDate || !params.endDate || !params.sessionToken) {
@@ -111,7 +107,6 @@ export default function ResultsScreen() {
         let lng: number | undefined;
 
         try {
-            // Step A: Get Coordinates
             if (coordCache.current[params.mapboxId]) {
                 console.log("Using cached coordinates for Mapbox ID:", params.mapboxId);
                 const cachedCoords = coordCache.current[params.mapboxId];
@@ -135,10 +130,9 @@ export default function ResultsScreen() {
                 coordCache.current[params.mapboxId] = { lat, lng };
             }
 
-            // Step B: Ticketmaster Call
             const radius = 30; const unit = "miles";
             const apiStartDateTime = `${params.startDate}T00:00:00Z`;
-            const endDateObj = new Date(params.endDate); // params.endDate is YYYY-MM-DD
+            const endDateObj = new Date(params.endDate);
             endDateObj.setDate(endDateObj.getDate() + 1);
             const apiEndDateTime = `${endDateObj.toISOString().slice(0,10)}T23:59:59Z`;
 
@@ -181,11 +175,8 @@ export default function ResultsScreen() {
         <SafeAreaView style={styles.safeArea}>
             <Stack.Screen options={{ title: searchTitle }} />
             <View style={styles.container}>
-                {/* Display Searched Criteria */}
+                {/* Display Searched Criteria (City is now part of header, only show dates here) */}
                 <View style={styles.searchRecapContainer}>
-                    <Text style={styles.searchRecapText}>
-                        Showing results for: <Text style={styles.searchRecapValue}>{params.cityName}</Text>
-                    </Text>
                     <Text style={styles.searchRecapText}>
                         Dates: <Text style={styles.searchRecapValue}>{formatDisplayDate(params.startDate)} - {formatDisplayDate(params.endDate)}</Text>
                     </Text>
@@ -198,7 +189,7 @@ export default function ResultsScreen() {
                 {isLoading && <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />}
                 {error && <Text style={styles.errorText}>{error}</Text>}
                 {!isLoading && !error && concerts.length === 0 && (
-                    <Text style={styles.noResultsText}>No concerts found for {params.cityName} between {formatDisplayDate(params.startDate)} and {formatDisplayDate(params.endDate)}.</Text>
+                    <Text style={styles.noResultsText}>No concerts found for {params.formattedCityName} between {formatDisplayDate(params.startDate)} and {formatDisplayDate(params.endDate)}.</Text>
                 )}
                 {!isLoading && !error && concerts.length > 0 && (
                     <FlatList
@@ -223,11 +214,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingTop: 10,
     },
-    searchRecapContainer: { // New style for the recap section
+    searchRecapContainer: {
         paddingVertical: 10,
         paddingHorizontal: 5,
         marginBottom: 10,
-        backgroundColor: '#f0f0f0', // A light background for emphasis
+        backgroundColor: '#f0f0f0',
         borderRadius: 8,
         alignItems: 'center',
     },

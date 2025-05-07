@@ -19,7 +19,6 @@ import { Ionicons } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
-// Sentry import removed
 
 // Access API keys from environment variables
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -81,6 +80,9 @@ export default function IndexScreen() {
     const [concertError, setConcertError] = useState<string | null>(null);
     const [searchAttempted, setSearchAttempted] = useState(false);
     const [sessionToken, setSessionToken] = useState<string | null>(null);
+    // New state to control visibility of search criteria
+    const [isSearchCriteriaVisible, setIsSearchCriteriaVisible] = useState(true);
+
 
     // --- Refs ---
     const interactionStarted = useRef(false);
@@ -107,12 +109,10 @@ export default function IndexScreen() {
         return localDate.toISOString().slice(0, 10);
     };
 
-    // --- Debounced Fetch for Mapbox Autocomplete (Sentry Removed) ---
+    // --- Debounced Fetch for Mapbox Autocomplete ---
     const fetchCitySuggestions = async (text: string) => {
-        const currentSessionToken = sessionToken; // Capture current session token
-
+        const currentSessionToken = sessionToken;
         console.log(`Mapbox suggest API call initiated. Token present: ${!!mapboxAccessToken}. Session: ${currentSessionToken}`);
-
         if (!mapboxAccessToken) { console.warn("Mapbox Access Token missing."); setIsCityLoading(false); return; }
         if (!currentSessionToken) { console.warn("Mapbox session token not ready."); setIsCityLoading(false); return; }
         if (text.length <= 2) { setSuggestions([]); setShowSuggestions(false); setIsCityLoading(false); return; }
@@ -126,18 +126,14 @@ export default function IndexScreen() {
 
         try {
             const response = await fetch(apiUrl);
-
             if (!response.ok) {
-                let errorData;
-                try { errorData = await response.json(); } catch (e) { errorData = 'Could not parse error response body.'; }
+                let errorData; try { errorData = await response.json(); } catch (e) { errorData = 'Could not parse error response body.'; }
                 const errorDetails = `Mapbox Suggest HTTP Error ${response.status}: ${JSON.stringify(errorData)}`;
-                console.error(errorDetails); // Log locally
-                throw new Error(errorDetails); // Throw error to trigger the catch block
+                console.error(errorDetails);
+                throw new Error(errorDetails);
             }
-
             const data = await response.json();
-            console.log('Mapbox Suggest Success Response:', data); // Log locally
-
+            console.log('Mapbox Suggest Success Response:', data);
             if (data.suggestions) {
                 setSuggestions(data.suggestions);
                 setShowSuggestions(true);
@@ -147,17 +143,14 @@ export default function IndexScreen() {
                 console.log("Mapbox Suggest returned OK but no suggestions field:", data);
             }
         } catch (error: any) {
-            console.error("Error during Mapbox Suggest API call:", error); // Log the full error locally
-            // Sentry.captureException removed
+            console.error("Error during Mapbox Suggest API call:", error);
             setSuggestions([]);
             setShowSuggestions(false);
-            // Optionally: setErrorMessage("Failed to load suggestions.");
         } finally {
             setIsCityLoading(false);
         }
     };
 
-    // Debounce is active
     const debouncedFetchSuggestions = useCallback(debounce(fetchCitySuggestions, 300), [mapboxAccessToken, sessionToken]);
 
     // --- Handlers ---
@@ -185,7 +178,6 @@ export default function IndexScreen() {
         const mapboxId = suggestion.mapbox_id;
         const primaryName = suggestion.name;
         const displayValue = formatSuggestionText(suggestion);
-
         setCity(displayValue);
         setSelectedMapboxId(mapboxId);
         setSelectedCityName(primaryName);
@@ -195,7 +187,6 @@ export default function IndexScreen() {
         interactionStarted.current = false;
         setSessionToken(uuidv4());
     };
-
 
     const handleClearCity = () => {
         debouncedFetchSuggestions.cancel();
@@ -213,7 +204,7 @@ export default function IndexScreen() {
     const showStartDatepicker = () => { setShowStartDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
     const showEndDatepicker = () => { setShowEndDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
 
-    // --- Ticketmaster Search Function (Includes Caching, Sentry Removed) ---
+    // --- Ticketmaster Search Function ---
     const handleConcertSearch = async () => {
         setSearchAttempted(true); Keyboard.dismiss(); setShowSuggestions(false); debouncedFetchSuggestions.cancel();
         if (!selectedMapboxId || !startDate || !endDate) { Alert.alert("Validation Error", "Please select a city from suggestions and both dates."); return; }
@@ -222,15 +213,15 @@ export default function IndexScreen() {
         if (!currentSessionToken) { Alert.alert("Error", "Session token missing."); return; }
 
         setIsConcertLoading(true); setConcertError(null); setConcerts([]);
+        setIsSearchCriteriaVisible(false); // Hide search criteria after search starts
+
         const userStartDateString = toLocalDateString(startDate);
         const userEndDateString = toLocalDateString(endDate);
         console.log(`User Selected Range: ${userStartDateString} to ${userEndDateString}`);
-
         let lat: number | undefined;
         let lng: number | undefined;
 
         try {
-            // --- Step A: Get Coordinates (Cache or Mapbox Retrieve) ---
             if (coordCache.current[selectedMapboxId]) {
                 console.log("Using cached coordinates for Mapbox ID:", selectedMapboxId);
                 const cachedCoords = coordCache.current[selectedMapboxId];
@@ -240,61 +231,50 @@ export default function IndexScreen() {
                 console.log("Coordinates not cached, fetching from Mapbox Retrieve API for ID:", selectedMapboxId);
                 const retrieveUrl = `https://api.mapbox.com/search/searchbox/v1/retrieve/${selectedMapboxId}?session_token=${currentSessionToken}&access_token=${mapboxAccessToken}`;
                 console.log("Requesting Mapbox Retrieve URL:", retrieveUrl);
-
                 const retrieveResponse = await fetch(retrieveUrl);
-
                 if (!retrieveResponse.ok) {
                     let errorData; try { errorData = await retrieveResponse.json(); } catch (e) { errorData = 'Could not parse error response body.'}
                     const errorDetails = `Mapbox Retrieve HTTP Error ${retrieveResponse.status}: ${JSON.stringify(errorData)}`;
                     console.error(errorDetails);
                     throw new Error(errorDetails);
                 }
-
                 const retrieveData: MapboxRetrieveResponse = await retrieveResponse.json();
                 const coordinates = retrieveData?.features?.[0]?.geometry?.coordinates;
                 lng = coordinates?.[0];
                 lat = coordinates?.[1];
-
                 if (lat === undefined || lng === undefined) {
                     console.error("Mapbox Retrieve Response Missing Coordinates:", retrieveData);
                     throw new Error('Could not extract coordinates from Mapbox retrieve response.');
                 }
-
                 console.log(`Coordinates found: Lat ${lat}, Lng ${lng}. Storing in cache.`);
                 coordCache.current[selectedMapboxId] = { lat, lng };
             }
 
-            // --- Step B: Ticketmaster Call ---
             const radius = 30; const unit = "miles";
             const apiStartDateTime = startDate.toISOString().slice(0, 10) + 'T00:00:00Z';
             const dayAfterEndDate = new Date(endDate);
             dayAfterEndDate.setDate(dayAfterEndDate.getDate() + 1);
             const apiEndDateTime = dayAfterEndDate.toISOString().slice(0, 10) + 'T23:59:59Z';
             const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=100`;
-
             console.log("Requesting Ticketmaster URL:", ticketmasterApiUrl);
             const tmResponse = await fetch(ticketmasterApiUrl);
-
             if (!tmResponse.ok) {
                 let errorMsg = `Ticketmaster API error! Status: ${tmResponse.status}`;
                 try { const errorData = await tmResponse.json(); errorMsg += `: ${errorData?.fault?.faultstring || errorData?.errors?.[0]?.detail || 'Unknown TM error'}`; } catch (e) {}
                 console.error(errorMsg);
                 throw new Error(errorMsg);
             }
-
             const tmData = await tmResponse.json();
-
             let fetchedEvents: any[] = [];
             if (tmData._embedded && tmData._embedded.events) { fetchedEvents = tmData._embedded.events; }
             const filteredEvents = fetchedEvents.filter(event => { const eventLocalDate = event.dates?.start?.localDate; return eventLocalDate && eventLocalDate >= userStartDateString && eventLocalDate <= userEndDateString; });
             setConcerts(filteredEvents);
-
         } catch (err: any) {
             console.error("--- ERROR DURING SEARCH ---");
             console.error("Error Name:", err.name);
             console.error("Error Message:", err.message);
-            // Sentry.captureException removed
             setConcertError(`Search failed. Please check inputs or try again later.`);
+            setIsSearchCriteriaVisible(true); // Show search criteria again if search fails
         } finally {
             setIsConcertLoading(false);
             interactionStarted.current = false;
@@ -302,77 +282,126 @@ export default function IndexScreen() {
         }
     };
 
+    const toggleSearchCriteria = () => {
+        setIsSearchCriteriaVisible(!isSearchCriteriaVisible);
+        if (isSearchCriteriaVisible) { // If we are about to hide it
+            Keyboard.dismiss(); // Dismiss keyboard if hiding search
+        }
+    };
+
     // --- UI Layout ---
     return (
          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingContainer}>
             <View style={styles.container}>
-                 <Text style={styles.title}> Find Concerts </Text>
-                 <Text style={styles.tagline}>ConcertFindr, all you need is a city and a date!</Text>
+                {/* Conditionally render search criteria section */}
+                {isSearchCriteriaVisible && (
+                    <>
+                        <Text style={styles.title}> Find Concerts </Text>
+                        <Text style={styles.tagline}>ConcertFindr, all you need is a city and a date!</Text>
 
-                 {/* Inputs */}
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter City (e.g., Chicago)"
-                        placeholderTextColor="#8e8e93" // Added explicit placeholder color
-                        value={city}
-                        onChangeText={handleCityChange}
-                        autoCapitalize="words"
-                        onFocus={() => {
-                            if (!interactionStarted.current) {
-                                interactionStarted.current = true;
-                                if (!sessionToken) setSessionToken(uuidv4());
-                            }
-                            if (selectedMapboxId) setShowSuggestions(false);
-                        }}
-                    />
-                    {city.length > 0 && (
-                        <TouchableOpacity onPress={handleClearCity} style={styles.clearIconTouchable}>
-                            <Ionicons name="close-circle" size={22} color="#888" />
-                        </TouchableOpacity>
-                    )}
-                    {isCityLoading && city.length > 2 && (
-                         <ActivityIndicator size="small" color="#6200EE" style={styles.cityLoadingIndicator} />
-                     )}
-                    {showSuggestions && city.length > 0 && !selectedMapboxId && (
-                        <FlatList
-                            style={styles.suggestionsList}
-                            data={suggestions}
-                            keyExtractor={(item) => item.mapbox_id}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity style={styles.suggestionItem} onPress={() => onSuggestionPress(item)}>
-                                    <Text style={styles.suggestionText}>{formatSuggestionText(item)}</Text>
+                        {/* City Input */}
+                        <View style={styles.inputContainer}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter City (e.g., Chicago)"
+                                placeholderTextColor="#8e8e93"
+                                value={city}
+                                onChangeText={handleCityChange}
+                                autoCapitalize="words"
+                                onFocus={() => {
+                                    if (!interactionStarted.current) {
+                                        interactionStarted.current = true;
+                                        if (!sessionToken) setSessionToken(uuidv4());
+                                    }
+                                    if (selectedMapboxId) setShowSuggestions(false);
+                                }}
+                            />
+                            {city.length > 0 && (
+                                <TouchableOpacity onPress={handleClearCity} style={styles.clearIconTouchable}>
+                                    <Ionicons name="close-circle" size={22} color="#888" />
                                 </TouchableOpacity>
                             )}
-                            ListEmptyComponent={<Text style={styles.noSuggestionText}>No matching cities found</Text>}
-                            keyboardShouldPersistTaps="handled"
-                            nestedScrollEnabled={true}
+                            {isCityLoading && city.length > 2 && (
+                                <ActivityIndicator size="small" color="#6200EE" style={styles.cityLoadingIndicator} />
+                            )}
+                            {showSuggestions && city.length > 0 && !selectedMapboxId && (
+                                <FlatList
+                                    style={styles.suggestionsList}
+                                    data={suggestions}
+                                    keyExtractor={(item) => item.mapbox_id}
+                                    renderItem={({ item }) => (
+                                        <TouchableOpacity style={styles.suggestionItem} onPress={() => onSuggestionPress(item)}>
+                                            <Text style={styles.suggestionText}>{formatSuggestionText(item)}</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    ListEmptyComponent={<Text style={styles.noSuggestionText}>No matching cities found</Text>}
+                                    keyboardShouldPersistTaps="handled"
+                                    nestedScrollEnabled={true}
+                                />
+                            )}
+                        </View>
+                        {/* Date Pickers */}
+                        <TouchableOpacity onPress={showStartDatepicker} style={styles.dateButton}>
+                            <Text style={styles.dateButtonText}>Start Date: {formatDate(startDate)}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={showEndDatepicker} style={styles.dateButton}>
+                            <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
+                        </TouchableOpacity>
+                        {showStartDatePicker && (<DateTimePicker testID="startDatePicker" value={startDate || new Date()} mode="date" display="default" onChange={onChangeStartDate}/>)}
+                        {showEndDatePicker && (<DateTimePicker testID="endDatePicker" value={endDate || startDate || new Date()} mode="date" display="default" onChange={onChangeEndDate} minimumDate={startDate || undefined}/>)}
+
+                        {/* Mapbox Attribution */}
+                        <View style={styles.attributionContainer}>
+                            <Text style={styles.poweredByText}>
+                                © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text>
+                                {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text>
+                                {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text>
+                            </Text>
+                        </View>
+
+                        {/* Search Button */}
+                        <View style={styles.buttonContainer}>
+                           <Button title="Search Concerts" onPress={handleConcertSearch} color="#007AFF" disabled={isConcertLoading || !selectedMapboxId || !startDate || !endDate} />
+                        </View>
+                    </>
+                )}
+
+                {/* Button to toggle search criteria visibility */}
+                {!isSearchCriteriaVisible && (
+                    <View style={styles.toggleSearchButtonContainer}>
+                        <Button
+                            title="Modify Search"
+                            onPress={toggleSearchCriteria}
+                            color="#007AFF"
                         />
-                    )}
-                </View>
-                <TouchableOpacity onPress={showStartDatepicker} style={styles.dateButton}>
-                    <Text style={styles.dateButtonText}>Start Date: {formatDate(startDate)}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={showEndDatepicker} style={styles.dateButton}>
-                    <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
-                </TouchableOpacity>
-                {showStartDatePicker && (<DateTimePicker testID="startDatePicker" value={startDate || new Date()} mode="date" display="default" onChange={onChangeStartDate}/>)}
-                {showEndDatePicker && (<DateTimePicker testID="endDatePicker" value={endDate || startDate || new Date()} mode="date" display="default" onChange={onChangeEndDate} minimumDate={startDate || undefined}/>)}
-
-                 {/* Mapbox Attribution */}
-                 <View style={styles.attributionContainer}>
-                     <Text style={styles.poweredByText}>
-                         © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text>
-                         {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text>
-                         {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text>
-                     </Text>
-                 </View>
-
-                 {/* Button */}
-                <View style={styles.buttonContainer}><Button title="Search Concerts" onPress={handleConcertSearch} color="#007AFF" disabled={isConcertLoading || !selectedMapboxId || !startDate || !endDate} /></View>
+                    </View>
+                )}
 
                 {/* Results Area */}
-                 <View style={styles.resultsArea}>{isConcertLoading && <ActivityIndicator size="large" color="#007AFF" />}{concertError && <Text style={styles.errorText}>{concertError}</Text>}{!isConcertLoading && !concertError && !searchAttempted && (<Text style={styles.noResultsText}>Enter criteria and search.</Text>)}{!isConcertLoading && !concertError && searchAttempted && concerts.length === 0 && (<Text style={styles.noResultsText}>No concerts found matching your criteria.</Text>)}{!isConcertLoading && !concertError && concerts.length > 0 && (<FlatList data={concerts} keyExtractor={(item) => item.id} renderItem={({ item }) => (<TouchableOpacity style={styles.concertItem} onPress={() => item.url && Linking.openURL(item.url)}><Text style={styles.concertName}>{item.name}</Text><Text style={styles.concertDate}>{item.dates?.start?.localDate} {formatTimeAmPm(item.dates?.start?.localTime)}</Text><Text style={styles.concertVenue}>{item._embedded?.venues?.[0]?.name} ({item._embedded?.venues?.[0]?.city?.name})</Text></TouchableOpacity>)} contentContainerStyle={{ paddingHorizontal: 5, paddingBottom: 50 }} />)}</View>
+                 <View style={styles.resultsArea}>
+                    {isConcertLoading && <ActivityIndicator size="large" color="#007AFF" />}
+                    {concertError && <Text style={styles.errorText}>{concertError}</Text>}
+                    {!isConcertLoading && !concertError && !searchAttempted && !isSearchCriteriaVisible && (
+                        <Text style={styles.noResultsText}>Search to see results.</Text> // Initial state when search is hidden
+                    )}
+                    {!isConcertLoading && !concertError && searchAttempted && concerts.length === 0 && (
+                        <Text style={styles.noResultsText}>No concerts found matching your criteria.</Text>
+                    )}
+                    {!isConcertLoading && !concertError && concerts.length > 0 && (
+                        <FlatList
+                            data={concerts}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity style={styles.concertItem} onPress={() => item.url && Linking.openURL(item.url)}>
+                                    <Text style={styles.concertName}>{item.name}</Text>
+                                    <Text style={styles.concertDate}>{item.dates?.start?.localDate} {formatTimeAmPm(item.dates?.start?.localTime)}</Text>
+                                    <Text style={styles.concertVenue}>{item._embedded?.venues?.[0]?.name} ({item._embedded?.venues?.[0]?.city?.name})</Text>
+                                </TouchableOpacity>
+                            )}
+                            contentContainerStyle={{ paddingHorizontal: 5, paddingBottom: 50 }}
+                        />
+                    )}
+                 </View>
              </View>
          </KeyboardAvoidingView>
      );
@@ -381,7 +410,7 @@ export default function IndexScreen() {
 // Styles
 const styles = StyleSheet.create({
     keyboardAvoidingContainer: { flex: 1 },
-    container: { flex: 1, paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center', backgroundColor: '#FFFFFF' },
+    container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center', backgroundColor: '#FFFFFF' }, // Adjusted paddingTop for Android
     title: { fontSize: 26, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, color: '#333333' },
     tagline: { fontSize: 17, color: '#666', textAlign: 'center', marginBottom: 30, fontStyle: 'italic', },
     inputContainer: { width: '100%', marginBottom: 10, position: 'relative', zIndex: 10 },
@@ -402,6 +431,12 @@ const styles = StyleSheet.create({
         fontSize: 10,
     },
     buttonContainer: { width: '100%', marginTop: 10, marginBottom: 20 },
+    toggleSearchButtonContainer: { // Style for the new button
+        width: '100%',
+        marginTop: 10,
+        marginBottom: 15,
+        paddingTop: 10, // Add some space above if search criteria are hidden
+    },
     resultsArea: { flex: 1, width: '100%', marginTop: 15, },
     concertItem: { paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: '#e0e0e0', backgroundColor: '#fdfdfd', marginBottom: 5, borderRadius: 4, },
     concertName: { fontSize: 16, fontWeight: 'bold', marginBottom: 4, },

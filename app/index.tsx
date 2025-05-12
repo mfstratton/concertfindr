@@ -335,3 +335,4 @@ const styles = StyleSheet.create({
     noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, }
 });
 
+

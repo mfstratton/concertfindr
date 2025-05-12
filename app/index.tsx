@@ -13,6 +13,7 @@ import {
     KeyboardAvoidingView,
     ActivityIndicator,
     Linking,
+    Image,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,11 +21,12 @@ import debounce from 'lodash.debounce';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 
-// Access API keys from environment variables
+SplashScreen.preventAutoHideAsync();
+
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-// Define interface for Mapbox Suggestion
 interface MapboxSuggestion {
     name: string;
     mapbox_id: string;
@@ -45,10 +47,8 @@ interface MapboxSuggestion {
 export default function SearchInputScreen() {
     const router = useRouter();
 
-    const [city, setCity] = useState(''); // This will hold "City, ST" after selection
+    const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
-    // selectedCityName is no longer strictly needed to pass if 'city' holds the formatted name
-    // const [selectedCityName, setSelectedCityName] = useState<string | null>(null);
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
     const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -57,12 +57,29 @@ export default function SearchInputScreen() {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isCityLoading, setIsCityLoading] = useState(false);
     const [sessionToken, setSessionToken] = useState<string | null>(null);
+    const [appIsReady, setAppIsReady] = useState(false);
 
     const interactionStarted = useRef(false);
 
     useEffect(() => {
-        setSessionToken(uuidv4());
+        async function prepareApp() {
+            try {
+                setSessionToken(uuidv4());
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            } catch (e) {
+                console.warn(e);
+            } finally {
+                setAppIsReady(true);
+            }
+        }
+        prepareApp();
     }, []);
+
+    const onLayoutRootView = useCallback(async () => {
+        if (appIsReady) {
+            await SplashScreen.hideAsync();
+        }
+    }, [appIsReady]);
 
     const formatSuggestionText = (suggestion: MapboxSuggestion | undefined): string => {
         if (!suggestion) return '';
@@ -70,9 +87,7 @@ export default function SearchInputScreen() {
         const regionCode = suggestion.context?.region?.region_code;
         return regionCode ? `${name}, ${regionCode}` : name;
     };
-
     const formatDate = (date: Date | null): string => { if (!date) return 'Select Date'; return date.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }); };
-
     const toLocalDateString = (date: Date): string => {
         const offset = date.getTimezoneOffset() * 60000;
         const localDate = new Date(date.getTime() - offset);
@@ -125,7 +140,6 @@ export default function SearchInputScreen() {
     const handleCityChange = (text: string) => {
         setCity(text);
         setSelectedMapboxId(null);
-        // setSelectedCityName(null); // Not strictly needed if 'city' state will hold formatted name
         if (!interactionStarted.current && text.length > 0) {
             interactionStarted.current = true;
             if (!sessionToken) setSessionToken(uuidv4());
@@ -144,11 +158,9 @@ export default function SearchInputScreen() {
 
     const onSuggestionPress = (suggestion: MapboxSuggestion) => {
         const mapboxId = suggestion.mapbox_id;
-        const displayValue = formatSuggestionText(suggestion); // This is "City, ST"
-
-        setCity(displayValue); // Set the input field to the formatted text
+        const displayValue = formatSuggestionText(suggestion);
+        setCity(displayValue);
         setSelectedMapboxId(mapboxId);
-        // setSelectedCityName(suggestion.name); // Still useful if you need just the city name internally
         setSuggestions([]);
         setShowSuggestions(false);
         Keyboard.dismiss();
@@ -160,7 +172,6 @@ export default function SearchInputScreen() {
         debouncedFetchSuggestions.cancel();
         setCity('');
         setSelectedMapboxId(null);
-        // setSelectedCityName(null);
         setSuggestions([]);
         setShowSuggestions(false);
         setIsCityLoading(false);
@@ -178,7 +189,7 @@ export default function SearchInputScreen() {
         setShowSuggestions(false);
         debouncedFetchSuggestions.cancel();
 
-        if (!selectedMapboxId || !startDate || !endDate || !city) { // Check 'city' which holds the formatted name
+        if (!selectedMapboxId || !startDate || !endDate || !city) {
             Alert.alert("Validation Error", "Please select a city from suggestions and both dates.");
             return;
         }
@@ -189,7 +200,7 @@ export default function SearchInputScreen() {
 
         const params = {
             mapboxId: selectedMapboxId,
-            formattedCityName: city, // Pass the full "City, ST" string
+            formattedCityName: city,
             startDate: toLocalDateString(startDate),
             endDate: toLocalDateString(endDate),
             sessionToken: sessionToken || uuidv4()
@@ -200,11 +211,22 @@ export default function SearchInputScreen() {
         setSessionToken(uuidv4());
     };
 
+    if (!appIsReady) {
+        return null;
+    }
+
     return (
-         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingContainer}>
+         <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.keyboardAvoidingContainer}
+            onLayout={onLayoutRootView}
+        >
             <View style={styles.container}>
-                <Text style={styles.title}> Find Concerts </Text>
-                <Text style={styles.tagline}>ConcertFindr, all you need is a city and a date!</Text>
+                <View style={styles.headerContainer}>
+                    <Image source={require('../assets/images/icon.png')} style={styles.logo} />
+                    <Text style={styles.appNameTitle}>ConcertFindr™</Text>
+                </View>
+                <Text style={styles.tagline}>All you need is a city and a date!</Text>
 
                 <View style={styles.inputContainer}>
                     <TextInput
@@ -273,9 +295,24 @@ export default function SearchInputScreen() {
 
 const styles = StyleSheet.create({
     keyboardAvoidingContainer: { flex: 1 },
-    container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center', backgroundColor: '#FFFFFF' },
-    title: { fontSize: 26, fontWeight: 'bold', textAlign: 'center', marginBottom: 5, color: '#333333' },
-    tagline: { fontSize: 17, color: '#666', textAlign: 'center', marginBottom: 30, fontStyle: 'italic', },
+    container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : 20, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center', backgroundColor: '#FFFFFF' },
+    headerContainer: {
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    logo: {
+        width: 60,
+        height: 60,
+        resizeMode: 'contain',
+        marginBottom: 8,
+    },
+    appNameTitle: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#333333',
+        textAlign: 'center',
+    },
+    tagline: { fontSize: 17, color: '#666', textAlign: 'center', marginBottom: 25, fontStyle: 'italic', },
     inputContainer: { width: '100%', marginBottom: 10, position: 'relative', zIndex: 10 },
     input: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, width: '100%', backgroundColor: '#f9f9f9', fontSize: 16, paddingRight: 45 },
     clearIconTouchable: { position: 'absolute', right: 10, top: 0, height: 50, width: 35, justifyContent: 'center', alignItems: 'center', zIndex: 6 },

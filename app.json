@@ -14,7 +14,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.concertfindr"
+      "bundleIdentifier": "com.concertfindr",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -54,5 +55,3 @@
     }
   }
 }
-
-

@@ -14,6 +14,7 @@ import {
     ActivityIndicator,
     Linking,
     Image,
+    Modal,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -179,8 +180,24 @@ export default function SearchInputScreen() {
         setSessionToken(uuidv4());
     };
 
-    const onChangeStartDate = (event: DateTimePickerEvent, selectedDate?: Date) => { if (Platform.OS === 'android') { setShowStartDatePicker(false); } if (event.type === 'set' && selectedDate) { setStartDate(selectedDate); } if (Platform.OS === 'ios' && event.type !== 'set') { setShowStartDatePicker(false); } };
-    const onChangeEndDate = (event: DateTimePickerEvent, selectedDate?: Date) => { if (Platform.OS === 'android') { setShowEndDatePicker(false); } if (event.type === 'set' && selectedDate) { setEndDate(selectedDate); if (startDate && selectedDate < startDate) { Alert.alert("Invalid Range", "End date cannot be before start date."); setEndDate(null); } } if (Platform.OS === 'ios' && event.type !== 'set') { setShowEndDatePicker(false); } };
+    const onChangeStartDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        setShowStartDatePicker(false);
+        if (event.type === 'set' && selectedDate) {
+            setStartDate(selectedDate);
+            setEndDate(selectedDate); // Set End Date to match Start Date
+        }
+    };
+    const onChangeEndDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        setShowEndDatePicker(false);
+        if (event.type === 'set' && selectedDate) {
+            if (startDate && selectedDate < startDate) {
+                Alert.alert("Invalid Range", "End date cannot be before start date.");
+                setEndDate(null);
+            } else {
+                setEndDate(selectedDate);
+            }
+        }
+    };
     const showStartDatepicker = () => { setShowStartDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
     const showEndDatepicker = () => { setShowEndDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
 
@@ -215,6 +232,55 @@ export default function SearchInputScreen() {
         return null;
     }
 
+    const renderDatePicker = () => {
+        if (Platform.OS === 'ios') {
+            return (
+                <Modal
+                    transparent={true}
+                    animationType="slide"
+                    visible={showStartDatePicker || showEndDatePicker}
+                    onRequestClose={() => {
+                        setShowStartDatePicker(false);
+                        setShowEndDatePicker(false);
+                    }}
+                >
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            {showStartDatePicker && (
+                                <DateTimePicker
+                                    testID="startDatePicker"
+                                    value={startDate || new Date()}
+                                    mode="date"
+                                    display="inline"
+                                    onChange={onChangeStartDate}
+                                />
+                            )}
+                            {showEndDatePicker && (
+                                <DateTimePicker
+                                    testID="endDatePicker"
+                                    value={endDate || startDate || new Date()}
+                                    mode="date"
+                                    display="inline"
+                                    onChange={onChangeEndDate}
+                                    minimumDate={startDate || undefined}
+                                />
+                            )}
+                            <Button title="Done" onPress={() => { setShowStartDatePicker(false); setShowEndDatePicker(false); }} />
+                        </View>
+                    </View>
+                </Modal>
+            );
+        } else {
+            if (showStartDatePicker) {
+                return <DateTimePicker testID="startDatePicker" value={startDate || new Date()} mode="date" display="default" onChange={onChangeStartDate}/>;
+            }
+            if (showEndDatePicker) {
+                return <DateTimePicker testID="endDatePicker" value={endDate || startDate || new Date()} mode="date" display="default" onChange={onChangeEndDate} minimumDate={startDate || undefined}/>;
+            }
+            return null;
+        }
+    };
+
     return (
          <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -226,7 +292,7 @@ export default function SearchInputScreen() {
                     <Image source={require('../assets/images/icon.png')} style={styles.logo} />
                     <Text style={styles.appNameTitle}>ConcertFindr™</Text>
                 </View>
-                <Text style={styles.tagline}>All you need is a city and a date</Text>
+                <Text style={styles.tagline}>All you need is a city and a date.</Text>
 
                 <View style={styles.inputContainer}>
                     <TextInput
@@ -274,8 +340,8 @@ export default function SearchInputScreen() {
                 <TouchableOpacity onPress={showEndDatepicker} style={styles.dateButton}>
                     <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
                 </TouchableOpacity>
-                {showStartDatePicker && (<DateTimePicker testID="startDatePicker" value={startDate || new Date()} mode="date" display="default" onChange={onChangeStartDate}/>)}
-                {showEndDatePicker && (<DateTimePicker testID="endDatePicker" value={endDate || startDate || new Date()} mode="date" display="default" onChange={onChangeEndDate} minimumDate={startDate || undefined}/>)}
+
+                {renderDatePicker()}
 
                 <View style={styles.attributionContainer}>
                     <Text style={styles.poweredByText}>
@@ -332,7 +398,25 @@ const styles = StyleSheet.create({
     },
     buttonContainer: { width: '100%', marginTop: 10, marginBottom: 20 },
     errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
-    noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, }
+    noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 20,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
 });
-
-

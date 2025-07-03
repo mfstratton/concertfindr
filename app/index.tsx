@@ -15,6 +15,8 @@ import {
     Linking,
     Image,
     Modal,
+    ScrollView,
+    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,6 +49,7 @@ interface MapboxSuggestion {
 
 export default function SearchInputScreen() {
     const router = useRouter();
+    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -181,14 +184,18 @@ export default function SearchInputScreen() {
     };
 
     const onChangeStartDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShowStartDatePicker(false);
+        if (Platform.OS === 'android') {
+            setShowStartDatePicker(false);
+        }
         if (event.type === 'set' && selectedDate) {
             setStartDate(selectedDate);
-            setEndDate(selectedDate); // Set End Date to match Start Date
+            setEndDate(selectedDate);
         }
     };
     const onChangeEndDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShowEndDatePicker(false);
+        if (Platform.OS === 'android') {
+            setShowEndDatePicker(false);
+        }
         if (event.type === 'set' && selectedDate) {
             if (startDate && selectedDate < startDate) {
                 Alert.alert("Invalid Range", "End date cannot be before start date.");
@@ -253,6 +260,7 @@ export default function SearchInputScreen() {
                                     mode="date"
                                     display="inline"
                                     onChange={onChangeStartDate}
+                                    theme={colorScheme === 'dark' ? 'dark' : 'light'}
                                 />
                             )}
                             {showEndDatePicker && (
@@ -263,6 +271,7 @@ export default function SearchInputScreen() {
                                     display="inline"
                                     onChange={onChangeEndDate}
                                     minimumDate={startDate || undefined}
+                                    theme={colorScheme === 'dark' ? 'dark' : 'light'}
                                 />
                             )}
                             <Button title="Done" onPress={() => { setShowStartDatePicker(false); setShowEndDatePicker(false); }} />
@@ -287,80 +296,93 @@ export default function SearchInputScreen() {
             style={styles.keyboardAvoidingContainer}
             onLayout={onLayoutRootView}
         >
-            <View style={styles.container}>
-                <View style={styles.headerContainer}>
-                    <Image source={require('../assets/images/icon.png')} style={styles.logo} />
-                    <Text style={styles.appNameTitle}>ConcertFindr™</Text>
-                </View>
-                <Text style={styles.tagline}>All you need is a city and a date.</Text>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollViewContent}
+                keyboardShouldPersistTaps="handled"
+            >
+                <View style={styles.container}>
+                    <View style={styles.headerContainer}>
+                        <Image source={require('../assets/images/icon.png')} style={styles.logo} />
+                        <Text style={styles.appNameTitle}>ConcertFindr™</Text>
+                    </View>
+                    <Text style={styles.tagline}>All you need is a city and a date.</Text>
 
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter City (e.g., Chicago)"
-                        placeholderTextColor="#8e8e93"
-                        value={city}
-                        onChangeText={handleCityChange}
-                        autoCapitalize="words"
-                        onFocus={() => {
-                            if (!interactionStarted.current) {
-                                interactionStarted.current = true;
-                                if (!sessionToken) setSessionToken(uuidv4());
-                            }
-                            if (selectedMapboxId) setShowSuggestions(false);
-                        }}
-                    />
-                    {city.length > 0 && (
-                        <TouchableOpacity onPress={handleClearCity} style={styles.clearIconTouchable}>
-                            <Ionicons name="close-circle" size={22} color="#888" />
-                        </TouchableOpacity>
-                    )}
-                    {isCityLoading && city.length > 2 && (
-                         <ActivityIndicator size="small" color="#6200EE" style={styles.cityLoadingIndicator} />
-                     )}
-                    {showSuggestions && city.length > 0 && !selectedMapboxId && (
-                        <FlatList
-                            style={styles.suggestionsList}
-                            data={suggestions}
-                            keyExtractor={(item) => item.mapbox_id}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity style={styles.suggestionItem} onPress={() => onSuggestionPress(item)}>
-                                    <Text style={styles.suggestionText}>{formatSuggestionText(item)}</Text>
-                                </TouchableOpacity>
-                            )}
-                            ListEmptyComponent={<Text style={styles.noSuggestionText}>No matching cities found</Text>}
-                            keyboardShouldPersistTaps="handled"
-                            nestedScrollEnabled={true}
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter City (e.g., Chicago)"
+                            placeholderTextColor="#8e8e93"
+                            value={city}
+                            onChangeText={handleCityChange}
+                            autoCapitalize="words"
+                            onFocus={() => {
+                                if (!interactionStarted.current) {
+                                    interactionStarted.current = true;
+                                    if (!sessionToken) setSessionToken(uuidv4());
+                                }
+                                if (selectedMapboxId) setShowSuggestions(false);
+                            }}
                         />
-                    )}
-                </View>
-                <TouchableOpacity onPress={showStartDatepicker} style={styles.dateButton}>
-                    <Text style={styles.dateButtonText}>Start Date: {formatDate(startDate)}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={showEndDatepicker} style={styles.dateButton}>
-                    <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
-                </TouchableOpacity>
+                        {city.length > 0 && (
+                            <TouchableOpacity onPress={handleClearCity} style={styles.clearIconTouchable}>
+                                <Ionicons name="close-circle" size={22} color="#888" />
+                            </TouchableOpacity>
+                        )}
+                        {isCityLoading && city.length > 2 && (
+                             <ActivityIndicator size="small" color="#6200EE" style={styles.cityLoadingIndicator} />
+                         )}
+                        {showSuggestions && city.length > 0 && !selectedMapboxId && (
+                            <FlatList
+                                style={styles.suggestionsList}
+                                data={suggestions}
+                                keyExtractor={(item) => item.mapbox_id}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity style={styles.suggestionItem} onPress={() => onSuggestionPress(item)}>
+                                        <Text style={styles.suggestionText}>{formatSuggestionText(item)}</Text>
+                                    </TouchableOpacity>
+                                )}
+                                ListEmptyComponent={<Text style={styles.noSuggestionText}>No matching cities found</Text>}
+                                keyboardShouldPersistTaps="handled"
+                                nestedScrollEnabled={true}
+                            />
+                        )}
+                    </View>
+                    <TouchableOpacity onPress={showStartDatepicker} style={styles.dateButton}>
+                        <Text style={styles.dateButtonText}>Start Date: {formatDate(startDate)}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={showEndDatepicker} style={styles.dateButton}>
+                        <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
+                    </TouchableOpacity>
 
-                {renderDatePicker()}
+                    {renderDatePicker()}
 
-                <View style={styles.attributionContainer}>
-                    <Text style={styles.poweredByText}>
-                        © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text>
-                        {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text>
-                        {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text>
-                    </Text>
-                </View>
+                    <View style={styles.attributionContainer}>
+                        <Text style={styles.poweredByText}>
+                            © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text>
+                            {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text>
+                            {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text>
+                        </Text>
+                    </View>
 
-                <View style={styles.buttonContainer}>
-                   <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} />
-                </View>
-             </View>
+                    <View style={styles.buttonContainer}>
+                       <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} />
+                    </View>
+                 </View>
+            </ScrollView>
          </KeyboardAvoidingView>
      );
 }
 
 const styles = StyleSheet.create({
     keyboardAvoidingContainer: { flex: 1 },
+    scrollView: {
+        flex: 1,
+    },
+    scrollViewContent: {
+        flexGrow: 1,
+        justifyContent: 'center'
+    },
     container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : 20, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center', backgroundColor: '#FFFFFF' },
     headerContainer: {
         alignItems: 'center',

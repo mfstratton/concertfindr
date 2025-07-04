@@ -306,7 +306,7 @@ export default function SearchInputScreen() {
                         <Image source={require('../assets/images/icon.png')} style={styles.logo} />
                         <Text style={styles.appNameTitle}>ConcertFindr™</Text>
                     </View>
-                    <Text style={styles.tagline}>All you need is a city and a date.</Text>
+                    <Text style={styles.tagline}>All you need is a city TEST and a date.</Text>
 
                     <View style={styles.inputContainer}>
                         <TextInput

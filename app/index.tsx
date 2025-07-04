@@ -16,7 +16,6 @@ import {
     Image,
     Modal,
     ScrollView,
-    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,7 +48,6 @@ interface MapboxSuggestion {
 
 export default function SearchInputScreen() {
     const router = useRouter();
-    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -258,9 +256,8 @@ export default function SearchInputScreen() {
                                     testID="startDatePicker"
                                     value={startDate || new Date()}
                                     mode="date"
-                                    display="inline"
+                                    display="spinner"
                                     onChange={onChangeStartDate}
-                                    theme={colorScheme === 'dark' ? 'dark' : 'light'}
                                 />
                             )}
                             {showEndDatePicker && (
@@ -268,10 +265,9 @@ export default function SearchInputScreen() {
                                     testID="endDatePicker"
                                     value={endDate || startDate || new Date()}
                                     mode="date"
-                                    display="inline"
+                                    display="spinner"
                                     onChange={onChangeEndDate}
                                     minimumDate={startDate || undefined}
-                                    theme={colorScheme === 'dark' ? 'dark' : 'light'}
                                 />
                             )}
                             <Button title="Done" onPress={() => { setShowStartDatePicker(false); setShowEndDatePicker(false); }} />
@@ -306,7 +302,7 @@ export default function SearchInputScreen() {
                         <Image source={require('../assets/images/icon.png')} style={styles.logo} />
                         <Text style={styles.appNameTitle}>ConcertFindr™</Text>
                     </View>
-                    <Text style={styles.tagline}>All you need is a city TEST and a date.</Text>
+                    <Text style={styles.tagline}>All you need is a city and a date. (v31 Test)</Text>
 
                     <View style={styles.inputContainer}>
                         <TextInput
@@ -423,19 +419,19 @@ const styles = StyleSheet.create({
     noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },
     modalContainer: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: 'flex-end',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     modalContent: {
         backgroundColor: '#fff',
-        borderRadius: 20,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
         padding: 20,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: 2,
+            height: -2,
         },
         shadowOpacity: 0.25,
         shadowRadius: 4,

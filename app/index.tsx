@@ -14,9 +14,7 @@ import {
     ActivityIndicator,
     Linking,
     Image,
-    Modal,
     ScrollView,
-    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,7 +47,6 @@ interface MapboxSuggestion {
 
 export default function SearchInputScreen() {
     const router = useRouter();
-    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -184,18 +181,14 @@ export default function SearchInputScreen() {
     };
 
     const onChangeStartDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        if (Platform.OS === 'android') {
-            setShowStartDatePicker(false);
-        }
+        setShowStartDatePicker(false);
         if (event.type === 'set' && selectedDate) {
             setStartDate(selectedDate);
-            setEndDate(selectedDate);
+            // Reverted: No longer setting the end date automatically
         }
     };
     const onChangeEndDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        if (Platform.OS === 'android') {
-            setShowEndDatePicker(false);
-        }
+        setShowEndDatePicker(false);
         if (event.type === 'set' && selectedDate) {
             if (startDate && selectedDate < startDate) {
                 Alert.alert("Invalid Range", "End date cannot be before start date.");
@@ -239,71 +232,6 @@ export default function SearchInputScreen() {
         return null;
     }
 
-    const renderDatePicker = () => {
-        const isPickerVisible = showStartDatePicker || showEndDatePicker;
-        if (!isPickerVisible) return null;
-
-        // For Android, it remains a modal by default
-        if (Platform.OS === 'android') {
-            if (showStartDatePicker) {
-                return <DateTimePicker testID="startDatePicker" value={startDate || new Date()} mode="date" display="default" onChange={onChangeStartDate}/>;
-            }
-            if (showEndDatePicker) {
-                return <DateTimePicker testID="endDatePicker" value={endDate || startDate || new Date()} mode="date" display="default" onChange={onChangeEndDate} minimumDate={startDate || undefined}/>;
-            }
-        }
-
-        // For iOS, we will render the picker directly if it's supposed to be shown
-        // This will now use the more reliable 'spinner' display inside a modal
-        if (Platform.OS === 'ios') {
-            return (
-                <Modal
-                    transparent={true}
-                    animationType="slide"
-                    visible={isPickerVisible}
-                    onRequestClose={() => {
-                        setShowStartDatePicker(false);
-                        setShowEndDatePicker(false);
-                    }}
-                >
-                    <TouchableOpacity
-                        style={styles.modalContainer}
-                        activeOpacity={1}
-                        onPressOut={() => { setShowStartDatePicker(false); setShowEndDatePicker(false); }}
-                    >
-                        <View style={styles.modalContent}>
-                            {showStartDatePicker && (
-                                <DateTimePicker
-                                    testID="startDatePicker"
-                                    value={startDate || new Date()}
-                                    mode="date"
-                                    display="spinner"
-                                    onChange={onChangeStartDate}
-                                    textColor={colorScheme === 'dark' ? 'white' : 'black'}
-                                />
-                            )}
-                            {showEndDatePicker && (
-                                <DateTimePicker
-                                    testID="endDatePicker"
-                                    value={endDate || startDate || new Date()}
-                                    mode="date"
-                                    display="spinner"
-                                    onChange={onChangeEndDate}
-                                    minimumDate={startDate || undefined}
-                                    textColor={colorScheme === 'dark' ? 'white' : 'black'}
-                                />
-                            )}
-                            <Button title="Done" onPress={() => { setShowStartDatePicker(false); setShowEndDatePicker(false); }} />
-                        </View>
-                    </TouchableOpacity>
-                </Modal>
-            );
-        }
-
-        return null;
-    };
-
-    // Helper for date range props
     const getMaximumDate = () => {
         const maxDate = new Date();
         maxDate.setFullYear(maxDate.getFullYear() + 2);
@@ -375,7 +303,28 @@ export default function SearchInputScreen() {
                         <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
                     </TouchableOpacity>
 
-                    {renderDatePicker()}
+                    {showStartDatePicker && (
+                        <DateTimePicker
+                            testID="startDatePicker"
+                            value={startDate || new Date()}
+                            mode="date"
+                            display="default"
+                            onChange={onChangeStartDate}
+                            minimumDate={new Date()}
+                            maximumDate={getMaximumDate()}
+                        />
+                    )}
+                    {showEndDatePicker && (
+                        <DateTimePicker
+                            testID="endDatePicker"
+                            value={endDate || startDate || new Date()}
+                            mode="date"
+                            display="default"
+                            onChange={onChangeEndDate}
+                            minimumDate={startDate || new Date()}
+                            maximumDate={getMaximumDate()}
+                        />
+                    )}
 
                     <View style={styles.attributionContainer}>
                         <Text style={styles.poweredByText}>
@@ -440,25 +389,5 @@ const styles = StyleSheet.create({
     },
     buttonContainer: { width: '100%', marginTop: 10, marginBottom: 20 },
     errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
-    noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 20,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: -2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
-    },
+    noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, }
 });

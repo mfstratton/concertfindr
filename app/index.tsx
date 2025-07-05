@@ -16,6 +16,7 @@ import {
     Image,
     Modal,
     ScrollView,
+    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,6 +49,7 @@ interface MapboxSuggestion {
 
 export default function SearchInputScreen() {
     const router = useRouter();
+    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -182,7 +184,7 @@ export default function SearchInputScreen() {
     };
 
     const onChangeStartDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        if (Platform.OS === 'ios') {
+        if (Platform.OS === 'android') {
             setShowStartDatePicker(false);
         }
         if (event.type === 'set' && selectedDate) {
@@ -191,7 +193,7 @@ export default function SearchInputScreen() {
         }
     };
     const onChangeEndDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        if (Platform.OS === 'ios') {
+        if (Platform.OS === 'android') {
             setShowEndDatePicker(false);
         }
         if (event.type === 'set' && selectedDate) {
@@ -241,46 +243,61 @@ export default function SearchInputScreen() {
         const isPickerVisible = showStartDatePicker || showEndDatePicker;
         if (!isPickerVisible) return null;
 
-        // For iOS, we will render the picker directly if it's supposed to be shown
-        // The modal logic is removed to simplify and address the display issues.
-        // The default 'compact' or 'inline' display will be used.
-        if (Platform.OS === 'ios') {
-            if (showStartDatePicker) {
-                return (
-                    <DateTimePicker
-                        testID="startDatePicker"
-                        value={startDate || new Date()}
-                        mode="date"
-                        display="inline"
-                        onChange={onChangeStartDate}
-                        minimumDate={new Date()}
-                        maximumDate={getMaximumDate()}
-                    />
-                );
-            }
-            if (showEndDatePicker) {
-                return (
-                    <DateTimePicker
-                        testID="endDatePicker"
-                        value={endDate || startDate || new Date()}
-                        mode="date"
-                        display="inline"
-                        onChange={onChangeEndDate}
-                        minimumDate={startDate || new Date()}
-                        maximumDate={getMaximumDate()}
-                    />
-                );
-            }
-        }
-
         // For Android, it remains a modal by default
         if (Platform.OS === 'android') {
             if (showStartDatePicker) {
-                return <DateTimePicker testID="startDatePicker" value={startDate || new Date()} mode="date" display="default" onChange={onChangeStartDate} minimumDate={new Date()} maximumDate={getMaximumDate()} />;
+                return <DateTimePicker testID="startDatePicker" value={startDate || new Date()} mode="date" display="default" onChange={onChangeStartDate}/>;
             }
             if (showEndDatePicker) {
-                return <DateTimePicker testID="endDatePicker" value={endDate || startDate || new Date()} mode="date" display="default" onChange={onChangeEndDate} minimumDate={startDate || new Date()} maximumDate={getMaximumDate()} />;
+                return <DateTimePicker testID="endDatePicker" value={endDate || startDate || new Date()} mode="date" display="default" onChange={onChangeEndDate} minimumDate={startDate || undefined}/>;
             }
+        }
+
+        // For iOS, we will render the picker directly if it's supposed to be shown
+        // This will now use the more reliable 'spinner' display inside a modal
+        if (Platform.OS === 'ios') {
+            return (
+                <Modal
+                    transparent={true}
+                    animationType="slide"
+                    visible={isPickerVisible}
+                    onRequestClose={() => {
+                        setShowStartDatePicker(false);
+                        setShowEndDatePicker(false);
+                    }}
+                >
+                    <TouchableOpacity
+                        style={styles.modalContainer}
+                        activeOpacity={1}
+                        onPressOut={() => { setShowStartDatePicker(false); setShowEndDatePicker(false); }}
+                    >
+                        <View style={styles.modalContent}>
+                            {showStartDatePicker && (
+                                <DateTimePicker
+                                    testID="startDatePicker"
+                                    value={startDate || new Date()}
+                                    mode="date"
+                                    display="spinner"
+                                    onChange={onChangeStartDate}
+                                    textColor={colorScheme === 'dark' ? 'white' : 'black'}
+                                />
+                            )}
+                            {showEndDatePicker && (
+                                <DateTimePicker
+                                    testID="endDatePicker"
+                                    value={endDate || startDate || new Date()}
+                                    mode="date"
+                                    display="spinner"
+                                    onChange={onChangeEndDate}
+                                    minimumDate={startDate || undefined}
+                                    textColor={colorScheme === 'dark' ? 'white' : 'black'}
+                                />
+                            )}
+                            <Button title="Done" onPress={() => { setShowStartDatePicker(false); setShowEndDatePicker(false); }} />
+                        </View>
+                    </TouchableOpacity>
+                </Modal>
+            );
         }
 
         return null;
@@ -423,5 +440,25 @@ const styles = StyleSheet.create({
     },
     buttonContainer: { width: '100%', marginTop: 10, marginBottom: 20 },
     errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
-    noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, }
+    noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: -2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
 });

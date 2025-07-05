@@ -16,6 +16,7 @@ import {
     Image,
     Modal,
     ScrollView,
+    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,6 +49,7 @@ interface MapboxSuggestion {
 
 export default function SearchInputScreen() {
     const router = useRouter();
+    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -171,7 +173,6 @@ export default function SearchInputScreen() {
             if (event.type === 'set') {
                 if (showDatePicker === 'start') {
                     setStartDate(currentDate);
-                    setEndDate(currentDate);
                 } else {
                     if (startDate && currentDate < startDate) {
                         Alert.alert("Invalid Range", "End date cannot be before start date.");
@@ -190,7 +191,6 @@ export default function SearchInputScreen() {
     const handleDonePressIOS = () => {
         if (showDatePicker === 'start') {
             setStartDate(tempDate);
-            setEndDate(tempDate);
         } else if (showDatePicker === 'end') {
             if (startDate && tempDate < startDate) {
                 Alert.alert("Invalid Range", "End date cannot be before start date.");
@@ -231,6 +231,52 @@ export default function SearchInputScreen() {
     };
 
     if (!appIsReady) return null;
+
+    const renderDatePicker = () => {
+        const isPickerVisible = showDatePicker !== null;
+
+        if (Platform.OS === 'android' && isPickerVisible) {
+            return (
+                <DateTimePicker
+                    value={showDatePicker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date())}
+                    mode="date"
+                    display="default"
+                    onChange={handleDateChange}
+                    minimumDate={showDatePicker === 'end' ? (startDate || new Date()) : new Date()}
+                />
+            );
+        }
+
+        if (Platform.OS === 'ios') {
+            return (
+                <Modal
+                    transparent={true}
+                    animationType="slide"
+                    visible={isPickerVisible}
+                    onRequestClose={() => setShowDatePicker(null)}
+                >
+                    <TouchableOpacity
+                        style={styles.modalContainer}
+                        activeOpacity={1}
+                        onPressOut={() => setShowDatePicker(null)}
+                    >
+                        <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#333' : '#fff' }]}>
+                            <DateTimePicker
+                                value={tempDate}
+                                mode="date"
+                                display="spinner"
+                                onChange={handleDateChange}
+                                minimumDate={showDatePicker === 'end' ? (startDate || undefined) : undefined}
+                                theme={colorScheme === 'dark' ? 'dark' : 'light'}
+                            />
+                            <Button title="Done" onPress={handleDonePressIOS} />
+                        </TouchableOpacity>
+                    </TouchableOpacity>
+                </Modal>
+            );
+        }
+        return null;
+    };
 
     return (
          <KeyboardAvoidingView
@@ -297,41 +343,7 @@ export default function SearchInputScreen() {
                         <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
                     </TouchableOpacity>
 
-                    {Platform.OS === 'android' && showDatePicker && (
-                        <DateTimePicker
-                            value={tempDate}
-                            mode="date"
-                            display="default"
-                            onChange={handleDateChange}
-                            minimumDate={showDatePicker === 'end' ? (startDate || new Date()) : new Date()}
-                        />
-                    )}
-
-                    {Platform.OS === 'ios' && (
-                        <Modal
-                            transparent={true}
-                            animationType="slide"
-                            visible={!!showDatePicker}
-                            onRequestClose={() => setShowDatePicker(null)}
-                        >
-                            <TouchableOpacity
-                                style={styles.modalContainer}
-                                activeOpacity={1}
-                                onPressOut={() => setShowDatePicker(null)}
-                            >
-                                <View style={styles.modalContent}>
-                                    <DateTimePicker
-                                        value={tempDate}
-                                        mode="date"
-                                        display="spinner"
-                                        onChange={handleDateChange}
-                                        minimumDate={showDatePicker === 'end' ? (startDate || new Date()) : new Date()}
-                                    />
-                                    <Button title="Done" onPress={handleDonePressIOS} />
-                                </View>
-                            </TouchableOpacity>
-                        </Modal>
-                    )}
+                    {renderDatePicker()}
 
                     <View style={styles.attributionContainer}>
                         <Text style={styles.poweredByText}>

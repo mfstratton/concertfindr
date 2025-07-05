@@ -14,6 +14,7 @@ import {
     ActivityIndicator,
     Linking,
     Image,
+    Modal,
     ScrollView,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -52,8 +53,9 @@ export default function SearchInputScreen() {
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
-    const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-    const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState<null | 'start' | 'end'>(null);
+    const [tempDate, setTempDate] = useState(new Date());
+
     const [suggestions, setSuggestions] = useState<MapboxSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isCityLoading, setIsCityLoading] = useState(false);
@@ -97,38 +99,22 @@ export default function SearchInputScreen() {
 
     const fetchCitySuggestions = async (text: string) => {
         const currentSessionToken = sessionToken;
-        console.log(`Mapbox suggest API call initiated. Token present: ${!!mapboxAccessToken}. Session: ${currentSessionToken}`);
-        if (!mapboxAccessToken) { console.warn("Mapbox Access Token missing."); setIsCityLoading(false); return; }
-        if (!currentSessionToken) { console.warn("Mapbox session token not ready."); setIsCityLoading(false); return; }
-        if (text.length <= 2) { setSuggestions([]); setShowSuggestions(false); setIsCityLoading(false); return; }
+        if (!mapboxAccessToken || !currentSessionToken || text.length <= 2) {
+            setSuggestions([]); setShowSuggestions(false);
+            return;
+        }
 
         setIsCityLoading(true);
-        const types = 'locality,place';
-        const country = 'US';
-        const language = 'en';
-        const limit = 5;
-        const apiUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(text)}&language=${language}&limit=${limit}&types=${types}&country=${country}&session_token=${currentSessionToken}&access_token=${mapboxAccessToken}`;
+        const apiUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(text)}&language=en&limit=5&types=locality,place&country=US&session_token=${currentSessionToken}&access_token=${mapboxAccessToken}`;
 
         try {
             const response = await fetch(apiUrl);
-            if (!response.ok) {
-                let errorData; try { errorData = await response.json(); } catch (e) { errorData = 'Could not parse error response body.'; }
-                const errorDetails = `Mapbox Suggest HTTP Error ${response.status}: ${JSON.stringify(errorData)}`;
-                console.error(errorDetails);
-                throw new Error(errorDetails);
-            }
+            if (!response.ok) throw new Error('Mapbox Suggest API Error');
             const data = await response.json();
-            console.log('Mapbox Suggest Success Response:', data);
-            if (data.suggestions) {
-                setSuggestions(data.suggestions);
-                setShowSuggestions(true);
-            } else {
-                setSuggestions([]);
-                setShowSuggestions(false);
-                console.log("Mapbox Suggest returned OK but no suggestions field:", data);
-            }
-        } catch (error: any) {
-            console.error("Error during Mapbox Suggest API call:", error);
+            setSuggestions(data.suggestions || []);
+            setShowSuggestions(true);
+        } catch (error) {
+            console.error("Error fetching city suggestions:", error);
             setSuggestions([]);
             setShowSuggestions(false);
         } finally {
@@ -158,10 +144,8 @@ export default function SearchInputScreen() {
     };
 
     const onSuggestionPress = (suggestion: MapboxSuggestion) => {
-        const mapboxId = suggestion.mapbox_id;
-        const displayValue = formatSuggestionText(suggestion);
-        setCity(displayValue);
-        setSelectedMapboxId(mapboxId);
+        setCity(formatSuggestionText(suggestion));
+        setSelectedMapboxId(suggestion.mapbox_id);
         setSuggestions([]);
         setShowSuggestions(false);
         Keyboard.dismiss();
@@ -180,32 +164,52 @@ export default function SearchInputScreen() {
         setSessionToken(uuidv4());
     };
 
-    const onChangeStartDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShowStartDatePicker(false);
-        if (event.type === 'set' && selectedDate) {
-            setStartDate(selectedDate);
-            // Reverted: No longer setting the end date automatically
-        }
-    };
-    const onChangeEndDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShowEndDatePicker(false);
-        if (event.type === 'set' && selectedDate) {
-            if (startDate && selectedDate < startDate) {
-                Alert.alert("Invalid Range", "End date cannot be before start date.");
-                setEndDate(null);
-            } else {
-                setEndDate(selectedDate);
+    const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        if (Platform.OS === 'android') {
+            const currentDate = selectedDate || (showDatePicker === 'start' ? startDate : endDate) || new Date();
+            setShowDatePicker(null);
+            if (event.type === 'set') {
+                if (showDatePicker === 'start') {
+                    setStartDate(currentDate);
+                    setEndDate(currentDate);
+                } else {
+                    if (startDate && currentDate < startDate) {
+                        Alert.alert("Invalid Range", "End date cannot be before start date.");
+                    } else {
+                        setEndDate(currentDate);
+                    }
+                }
+            }
+        } else {
+            if (selectedDate) {
+                setTempDate(selectedDate);
             }
         }
     };
-    const showStartDatepicker = () => { setShowStartDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
-    const showEndDatepicker = () => { setShowEndDatePicker(true); setShowSuggestions(false); Keyboard.dismiss(); };
 
-    const handleNavigateToResults = () => {
+    const handleDonePressIOS = () => {
+        if (showDatePicker === 'start') {
+            setStartDate(tempDate);
+            setEndDate(tempDate);
+        } else if (showDatePicker === 'end') {
+            if (startDate && tempDate < startDate) {
+                Alert.alert("Invalid Range", "End date cannot be before start date.");
+            } else {
+                setEndDate(tempDate);
+            }
+        }
+        setShowDatePicker(null);
+    };
+
+    const openDatePicker = (picker: 'start' | 'end') => {
         Keyboard.dismiss();
         setShowSuggestions(false);
-        debouncedFetchSuggestions.cancel();
+        const initialDate = picker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date());
+        setTempDate(initialDate);
+        setShowDatePicker(picker);
+    };
 
+    const handleNavigateToResults = () => {
         if (!selectedMapboxId || !startDate || !endDate || !city) {
             Alert.alert("Validation Error", "Please select a city from suggestions and both dates.");
             return;
@@ -214,7 +218,6 @@ export default function SearchInputScreen() {
             Alert.alert("API Key Error", "Mapbox API key not loaded.");
             return;
         }
-
         const params = {
             mapboxId: selectedMapboxId,
             formattedCityName: city,
@@ -222,21 +225,12 @@ export default function SearchInputScreen() {
             endDate: toLocalDateString(endDate),
             sessionToken: sessionToken || uuidv4()
         };
-
         router.push({ pathname: "/results", params: params });
         interactionStarted.current = false;
         setSessionToken(uuidv4());
     };
 
-    if (!appIsReady) {
-        return null;
-    }
-
-    const getMaximumDate = () => {
-        const maxDate = new Date();
-        maxDate.setFullYear(maxDate.getFullYear() + 2);
-        return maxDate;
-    };
+    if (!appIsReady) return null;
 
     return (
          <KeyboardAvoidingView
@@ -296,34 +290,47 @@ export default function SearchInputScreen() {
                             />
                         )}
                     </View>
-                    <TouchableOpacity onPress={showStartDatepicker} style={styles.dateButton}>
+                    <TouchableOpacity onPress={() => openDatePicker('start')} style={styles.dateButton}>
                         <Text style={styles.dateButtonText}>Start Date: {formatDate(startDate)}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={showEndDatepicker} style={styles.dateButton}>
+                    <TouchableOpacity onPress={() => openDatePicker('end')} style={styles.dateButton}>
                         <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
                     </TouchableOpacity>
 
-                    {showStartDatePicker && (
+                    {Platform.OS === 'android' && showDatePicker && (
                         <DateTimePicker
-                            testID="startDatePicker"
-                            value={startDate || new Date()}
+                            value={tempDate}
                             mode="date"
                             display="default"
-                            onChange={onChangeStartDate}
-                            minimumDate={new Date()}
-                            maximumDate={getMaximumDate()}
+                            onChange={handleDateChange}
+                            minimumDate={showDatePicker === 'end' ? (startDate || new Date()) : new Date()}
                         />
                     )}
-                    {showEndDatePicker && (
-                        <DateTimePicker
-                            testID="endDatePicker"
-                            value={endDate || startDate || new Date()}
-                            mode="date"
-                            display="default"
-                            onChange={onChangeEndDate}
-                            minimumDate={startDate || new Date()}
-                            maximumDate={getMaximumDate()}
-                        />
+
+                    {Platform.OS === 'ios' && (
+                        <Modal
+                            transparent={true}
+                            animationType="slide"
+                            visible={!!showDatePicker}
+                            onRequestClose={() => setShowDatePicker(null)}
+                        >
+                            <TouchableOpacity
+                                style={styles.modalContainer}
+                                activeOpacity={1}
+                                onPressOut={() => setShowDatePicker(null)}
+                            >
+                                <View style={styles.modalContent}>
+                                    <DateTimePicker
+                                        value={tempDate}
+                                        mode="date"
+                                        display="spinner"
+                                        onChange={handleDateChange}
+                                        minimumDate={showDatePicker === 'end' ? (startDate || new Date()) : new Date()}
+                                    />
+                                    <Button title="Done" onPress={handleDonePressIOS} />
+                                </View>
+                            </TouchableOpacity>
+                        </Modal>
                     )}
 
                     <View style={styles.attributionContainer}>
@@ -389,5 +396,25 @@ const styles = StyleSheet.create({
     },
     buttonContainer: { width: '100%', marginTop: 10, marginBottom: 20 },
     errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
-    noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, }
+    noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: -2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
 });

@@ -16,7 +16,6 @@ import {
     Image,
     Modal,
     ScrollView,
-    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,7 +48,6 @@ interface MapboxSuggestion {
 
 export default function SearchInputScreen() {
     const router = useRouter();
-    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -167,38 +165,33 @@ export default function SearchInputScreen() {
     };
 
     const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        if (Platform.OS === 'android') {
-            const currentDate = selectedDate || (showDatePicker === 'start' ? startDate : endDate) || new Date();
-            setShowDatePicker(null);
-            if (event.type === 'set') {
-                if (showDatePicker === 'start') {
-                    setStartDate(currentDate);
+        const pickerToShow = showDatePicker;
+        setShowDatePicker(null);
+        if (event.type === 'set' && selectedDate) {
+            if (pickerToShow === 'start') {
+                setStartDate(selectedDate);
+            } else {
+                if (startDate && selectedDate < startDate) {
+                    Alert.alert("Invalid Range", "End date cannot be before start date.");
                 } else {
-                    if (startDate && currentDate < startDate) {
-                        Alert.alert("Invalid Range", "End date cannot be before start date.");
-                    } else {
-                        setEndDate(currentDate);
-                    }
+                    setEndDate(selectedDate);
                 }
-            }
-        } else {
-            if (selectedDate) {
-                setTempDate(selectedDate);
             }
         }
     };
 
     const handleDonePressIOS = () => {
-        if (showDatePicker === 'start') {
+        const pickerToShow = showDatePicker;
+        setShowDatePicker(null);
+        if (pickerToShow === 'start') {
             setStartDate(tempDate);
-        } else if (showDatePicker === 'end') {
+        } else if (pickerToShow === 'end') {
             if (startDate && tempDate < startDate) {
                 Alert.alert("Invalid Range", "End date cannot be before start date.");
             } else {
                 setEndDate(tempDate);
             }
         }
-        setShowDatePicker(null);
     };
 
     const openDatePicker = (picker: 'start' | 'end') => {
@@ -234,8 +227,9 @@ export default function SearchInputScreen() {
 
     const renderDatePicker = () => {
         const isPickerVisible = showDatePicker !== null;
+        if (!isPickerVisible) return null;
 
-        if (Platform.OS === 'android' && isPickerVisible) {
+        if (Platform.OS === 'android') {
             return (
                 <DateTimePicker
                     value={showDatePicker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date())}
@@ -260,14 +254,13 @@ export default function SearchInputScreen() {
                         activeOpacity={1}
                         onPressOut={() => setShowDatePicker(null)}
                     >
-                        <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#333' : '#fff' }]}>
+                        <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
                             <DateTimePicker
                                 value={tempDate}
                                 mode="date"
                                 display="spinner"
                                 onChange={handleDateChange}
-                                minimumDate={showDatePicker === 'end' ? (startDate || undefined) : undefined}
-                                theme={colorScheme === 'dark' ? 'dark' : 'light'}
+                                minimumDate={showDatePicker === 'end' ? (startDate || undefined) : new Date()}
                             />
                             <Button title="Done" onPress={handleDonePressIOS} />
                         </TouchableOpacity>
@@ -345,16 +338,26 @@ export default function SearchInputScreen() {
 
                     {renderDatePicker()}
 
+                    <View style={styles.buttonContainer}>
+                        {Platform.OS === 'ios' ? (
+                            <TouchableOpacity
+                                style={[styles.customButton, (!selectedMapboxId || !startDate || !endDate) && styles.disabledButton]}
+                                onPress={handleNavigateToResults}
+                                disabled={!selectedMapboxId || !startDate || !endDate}
+                            >
+                                <Text style={styles.customButtonText}>Search Concerts</Text>
+                            </TouchableOpacity>
+                        ) : (
+                           <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} />
+                        )}
+                    </View>
+
                     <View style={styles.attributionContainer}>
                         <Text style={styles.poweredByText}>
                             © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text>
                             {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text>
                             {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text>
                         </Text>
-                    </View>
-
-                    <View style={styles.buttonContainer}>
-                       <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} />
                     </View>
                  </View>
             </ScrollView>
@@ -399,7 +402,7 @@ const styles = StyleSheet.create({
     noSuggestionText: { padding: 12, fontStyle: 'italic', color: '#888' },
     dateButton: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, width: '100%', backgroundColor: '#f9f9f9', justifyContent: 'center', alignItems: 'flex-start' },
     dateButtonText: { fontSize: 16, color: '#333' },
-    attributionContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8, marginBottom: 8, },
+    attributionContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 20, marginBottom: 8, },
     poweredByText: { fontSize: 10, color: '#888', },
     linkText: {
         color: '#007AFF',
@@ -407,6 +410,22 @@ const styles = StyleSheet.create({
         fontSize: 10,
     },
     buttonContainer: { width: '100%', marginTop: 10, marginBottom: 20 },
+    customButton: {
+        backgroundColor: '#007AFF',
+        paddingVertical: 12,
+        paddingHorizontal: 30,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    customButtonText: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    disabledButton: {
+        backgroundColor: '#A9A9A9',
+    },
     errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
     noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },
     modalContainer: {

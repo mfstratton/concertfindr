@@ -2,6 +2,7 @@
   "expo": {
     "name": "ConcertFindr",
     "slug": "concertfindr",
+    "owner": "findr-labs-llc",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,10 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.concertfindr",
-      "buildNumber": "14",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "buildNumber": "15"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +24,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.concertfindr",
-      "versionCode": 40,
+      "versionCode": 41,
       "permissions": [
         "android.permission.INTERNET"
       ]

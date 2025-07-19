@@ -16,6 +16,7 @@ import {
     Image,
     Modal,
     ScrollView,
+    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,6 +49,7 @@ interface MapboxSuggestion {
 
 export default function SearchInputScreen() {
     const router = useRouter();
+    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -165,17 +167,23 @@ export default function SearchInputScreen() {
     };
 
     const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        const pickerToShow = showDatePicker;
-        setShowDatePicker(null);
-        if (event.type === 'set' && selectedDate) {
-            if (pickerToShow === 'start') {
-                setStartDate(selectedDate);
-            } else {
-                if (startDate && selectedDate < startDate) {
-                    Alert.alert("Invalid Range", "End date cannot be before start date.");
+        if (Platform.OS === 'android') {
+            const currentDate = selectedDate || (showDatePicker === 'start' ? startDate : endDate) || new Date();
+            setShowDatePicker(null);
+            if (event.type === 'set') {
+                if (showDatePicker === 'start') {
+                    setStartDate(currentDate);
                 } else {
-                    setEndDate(selectedDate);
+                    if (startDate && currentDate < startDate) {
+                        Alert.alert("Invalid Range", "End date cannot be before start date.");
+                    } else {
+                        setEndDate(currentDate);
+                    }
                 }
+            }
+        } else {
+            if (selectedDate) {
+                setTempDate(selectedDate);
             }
         }
     };
@@ -254,13 +262,14 @@ export default function SearchInputScreen() {
                         activeOpacity={1}
                         onPressOut={() => setShowDatePicker(null)}
                     >
-                        <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
+                        <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
                             <DateTimePicker
                                 value={tempDate}
                                 mode="date"
                                 display="spinner"
                                 onChange={handleDateChange}
                                 minimumDate={showDatePicker === 'end' ? (startDate || undefined) : new Date()}
+                                theme={colorScheme === 'dark' ? 'dark' : 'light'}
                             />
                             <Button title="Done" onPress={handleDonePressIOS} />
                         </TouchableOpacity>

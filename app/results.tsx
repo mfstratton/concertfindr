@@ -11,28 +11,25 @@ import {
     SafeAreaView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import 'react-native-get-random-values'; // For uuid
+import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
 
-// Access API keys from environment variables
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 const ticketmasterApiKey = process.env.EXPO_PUBLIC_TICKETMASTER_API_KEY;
 
-// Define interface for cached coordinates
 interface Coordinates {
     lat: number;
     lng: number;
 }
 
-// Define interface for Mapbox Retrieve Response
 interface MapboxRetrieveResponse {
     type: "FeatureCollection";
     features: {
         type: "Feature";
         geometry: {
             type: "Point";
-            coordinates: [number, number]; // [longitude, latitude]
+            coordinates: [number, number];
         };
         properties: any;
     }[];
@@ -43,10 +40,12 @@ export default function ResultsScreen() {
     const router = useRouter();
     const params = useLocalSearchParams<{
         mapboxId?: string,
-        formattedCityName?: string, // Changed from cityName
+        formattedCityName?: string,
         startDate?: string,
         endDate?: string,
-        sessionToken?: string
+        sessionToken?: string,
+        radius?: string,
+        genres?: string,
     }>();
 
     const [concerts, setConcerts] = useState<any[]>([]);
@@ -81,7 +80,7 @@ export default function ResultsScreen() {
 
     useEffect(() => {
         if (params.mapboxId && params.startDate && params.endDate && params.formattedCityName) {
-            setSearchTitle(`Concerts in ${params.formattedCityName}`); // Use formattedCityName
+            setSearchTitle(`Concerts in ${params.formattedCityName}`);
             fetchConcerts();
         } else {
             setError("Search parameters are missing.");
@@ -90,7 +89,7 @@ export default function ResultsScreen() {
     }, [params.mapboxId, params.startDate, params.endDate, params.formattedCityName]);
 
     const fetchConcerts = async () => {
-        if (!params.mapboxId || !params.startDate || !params.endDate || !params.sessionToken) {
+        if (!params.mapboxId || !params.startDate || !params.endDate || !params.sessionToken || !params.radius) {
             setError("Required parameters for fetching concerts are missing.");
             return;
         }
@@ -130,13 +129,18 @@ export default function ResultsScreen() {
                 coordCache.current[params.mapboxId] = { lat, lng };
             }
 
-            const radius = 30; const unit = "miles";
+            const radius = params.radius;
+            const unit = "miles";
             const apiStartDateTime = `${params.startDate}T00:00:00Z`;
             const endDateObj = new Date(params.endDate);
             endDateObj.setDate(endDateObj.getDate() + 1);
             const apiEndDateTime = `${endDateObj.toISOString().slice(0,10)}T23:59:59Z`;
 
-            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=100`;
+            const selectedGenres = params.genres ? params.genres.split(',') : [];
+            const genreQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';
+
+            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreQuery}`;
+
             console.log("Requesting Ticketmaster URL:", ticketmasterApiUrl);
             const tmResponse = await fetch(ticketmasterApiUrl);
             if (!tmResponse.ok) {
@@ -149,6 +153,7 @@ export default function ResultsScreen() {
             if (tmData._embedded && tmData._embedded.events) {
                 fetchedEvents = tmData._embedded.events;
             }
+
             const filteredEvents = fetchedEvents.filter(event => {
                 const eventLocalDate = event.dates?.start?.localDate;
                 return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;
@@ -163,6 +168,19 @@ export default function ResultsScreen() {
         }
     };
 
+    const getGenreIds = (genres: string[]): string => {
+        const genreMap: { [key: string]: string } = {
+            "Alternative": "KnvZfZ7vAvv", "Ballads/Romantic": "KnvZfZ7vAev", "Blues": "KnvZfZ7vAvd",
+            "Children's Music": "KnvZfZ7vAv1", "Classical": "KnvZfZ7vAeA", "Country": "KnvZfZ7vAv6",
+            "Dance/Electronic": "KnvZfZ7vAvF", "Folk": "KnvZfZ7vAva", "Hip-Hop/Rap": "KnvZfZ7vAv1",
+            "Holiday": "KnvZfZ7vAvE", "Jazz": "KnvZfZ7vAvE", "Latin": "KnvZfZ7vAFe",
+            "Metal": "KnvZfZ7vAvt", "New Age": "KnvZfZ7vAee", "Pop": "KnvZfZ7vAev",
+            "R&B": "KnvZfZ7vAee", "Reggae": "KnvZfZ7vAed", "Religious": "KnvZfZ7vAAd",
+            "Rock": "KnvZfZ7vAeA", "World": "KnvZfZ7vAFr"
+        };
+        return genres.map(genre => genreMap[genre]).filter(id => id).join(',');
+    };
+
     const renderConcertItem = ({ item }: { item: any }) => (
         <TouchableOpacity style={styles.concertItem} onPress={() => item.url && Linking.openURL(item.url)}>
             <Text style={styles.concertName}>{item.name}</Text>
@@ -175,7 +193,6 @@ export default function ResultsScreen() {
         <SafeAreaView style={styles.safeArea}>
             <Stack.Screen options={{ title: searchTitle }} />
             <View style={styles.container}>
-                {/* Display Searched Criteria (City is now part of header, only show dates here) */}
                 <View style={styles.searchRecapContainer}>
                     <Text style={styles.searchRecapText}>
                         Dates: <Text style={styles.searchRecapValue}>{formatDisplayDate(params.startDate)} - {formatDisplayDate(params.endDate)}</Text>

@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.concertfindr",
-      "buildNumber": "18",
+      "buildNumber": "19",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -27,7 +27,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.concertfindr",
-      "versionCode": 46,
+      "versionCode": 47,
       "permissions": [
         "android.permission.INTERNET"
       ]

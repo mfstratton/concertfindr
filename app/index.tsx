@@ -16,7 +16,6 @@ import {
     Image,
     Modal,
     ScrollView,
-    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +24,7 @@ import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -47,9 +47,11 @@ interface MapboxSuggestion {
     metadata?: any;
 }
 
+const GENRE_OPTIONS = ["Alternative", "Ballads/Romantic", "Blues", "Children's Music", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Holiday", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
+const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 50, 60];
+
 export default function SearchInputScreen() {
     const router = useRouter();
-    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -57,19 +59,29 @@ export default function SearchInputScreen() {
     const [endDate, setEndDate] = useState<Date | null>(null);
     const [showDatePicker, setShowDatePicker] = useState<null | 'start' | 'end'>(null);
     const [tempDate, setTempDate] = useState(new Date());
-
     const [suggestions, setSuggestions] = useState<MapboxSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isCityLoading, setIsCityLoading] = useState(false);
     const [sessionToken, setSessionToken] = useState<string | null>(null);
     const [appIsReady, setAppIsReady] = useState(false);
 
+    const [isAdvancedSearchVisible, setIsAdvancedSearchVisible] = useState(false);
+    const [selectedRadius, setSelectedRadius] = useState<number>(30);
+    const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+    const [isGenreModalVisible, setIsGenreModalVisible] = useState(false);
+
     const interactionStarted = useRef(false);
+    const isInitialGenreLoadDone = useRef(false);
 
     useEffect(() => {
         async function prepareApp() {
             try {
                 setSessionToken(uuidv4());
+                const savedGenres = await AsyncStorage.getItem('user_genres');
+                if (savedGenres !== null) {
+                    setSelectedGenres(JSON.parse(savedGenres));
+                }
+                isInitialGenreLoadDone.current = true;
                 await new Promise(resolve => setTimeout(resolve, 1500));
             } catch (e) {
                 console.warn(e);
@@ -79,6 +91,12 @@ export default function SearchInputScreen() {
         }
         prepareApp();
     }, []);
+
+    useEffect(() => {
+        if (isInitialGenreLoadDone.current) {
+            AsyncStorage.setItem('user_genres', JSON.stringify(selectedGenres));
+        }
+    }, [selectedGenres]);
 
     const onLayoutRootView = useCallback(async () => {
         if (appIsReady) {
@@ -167,23 +185,17 @@ export default function SearchInputScreen() {
     };
 
     const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        if (Platform.OS === 'android') {
-            const currentDate = selectedDate || (showDatePicker === 'start' ? startDate : endDate) || new Date();
-            setShowDatePicker(null);
-            if (event.type === 'set') {
-                if (showDatePicker === 'start') {
-                    setStartDate(currentDate);
+        const pickerToShow = showDatePicker;
+        setShowDatePicker(null);
+        if (event.type === 'set' && selectedDate) {
+            if (pickerToShow === 'start') {
+                setStartDate(selectedDate);
+            } else {
+                if (startDate && selectedDate < startDate) {
+                    Alert.alert("Invalid Range", "End date cannot be before start date.");
                 } else {
-                    if (startDate && currentDate < startDate) {
-                        Alert.alert("Invalid Range", "End date cannot be before start date.");
-                    } else {
-                        setEndDate(currentDate);
-                    }
+                    setEndDate(selectedDate);
                 }
-            }
-        } else {
-            if (selectedDate) {
-                setTempDate(selectedDate);
             }
         }
     };
@@ -210,6 +222,14 @@ export default function SearchInputScreen() {
         setShowDatePicker(picker);
     };
 
+    const handleGenreSelect = (genre: string) => {
+        setSelectedGenres(prevGenres =>
+            prevGenres.includes(genre)
+                ? prevGenres.filter(g => g !== genre)
+                : [...prevGenres, genre]
+        );
+    };
+
     const handleNavigateToResults = () => {
         if (!selectedMapboxId || !startDate || !endDate || !city) {
             Alert.alert("Validation Error", "Please select a city from suggestions and both dates.");
@@ -224,7 +244,9 @@ export default function SearchInputScreen() {
             formattedCityName: city,
             startDate: toLocalDateString(startDate),
             endDate: toLocalDateString(endDate),
-            sessionToken: sessionToken || uuidv4()
+            sessionToken: sessionToken || uuidv4(),
+            radius: selectedRadius.toString(),
+            genres: selectedGenres.join(','),
         };
         router.push({ pathname: "/results", params: params });
         interactionStarted.current = false;
@@ -262,14 +284,13 @@ export default function SearchInputScreen() {
                         activeOpacity={1}
                         onPressOut={() => setShowDatePicker(null)}
                     >
-                        <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
+                        <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
                             <DateTimePicker
                                 value={tempDate}
                                 mode="date"
                                 display="spinner"
                                 onChange={handleDateChange}
                                 minimumDate={showDatePicker === 'end' ? (startDate || undefined) : new Date()}
-                                theme={colorScheme === 'dark' ? 'dark' : 'light'}
                             />
                             <Button title="Done" onPress={handleDonePressIOS} />
                         </TouchableOpacity>
@@ -347,6 +368,32 @@ export default function SearchInputScreen() {
 
                     {renderDatePicker()}
 
+                    <TouchableOpacity style={styles.advancedSearchToggle} onPress={() => setIsAdvancedSearchVisible(!isAdvancedSearchVisible)}>
+                        <Text style={styles.advancedSearchText}>Advanced Search</Text>
+                        <Ionicons name={isAdvancedSearchVisible ? "chevron-up" : "chevron-down"} size={20} color="#007AFF" />
+                    </TouchableOpacity>
+
+                    {isAdvancedSearchVisible && (
+                        <View style={styles.advancedSearchContainer}>
+                            <Text style={styles.advancedLabel}>Search Radius (miles)</Text>
+                            <View style={styles.radiusOptionsContainer}>
+                                {RADIUS_OPTIONS.map(radius => (
+                                    <TouchableOpacity
+                                        key={radius}
+                                        style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]}
+                                        onPress={() => setSelectedRadius(radius)}
+                                    >
+                                        <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            <Text style={styles.advancedLabel}>Genre</Text>
+                            <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}>
+                                <Text style={styles.genreButtonText}>{selectedGenres.length > 0 ? selectedGenres.join(', ') : 'All Genres'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
                     <View style={styles.buttonContainer}>
                         {Platform.OS === 'ios' ? (
                             <TouchableOpacity
@@ -368,8 +415,32 @@ export default function SearchInputScreen() {
                             {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text>
                         </Text>
                     </View>
-                 </View>
+                </View>
             </ScrollView>
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isGenreModalVisible}
+                onRequestClose={() => setIsGenreModalVisible(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Select Genres</Text>
+                        <FlatList
+                            data={GENRE_OPTIONS}
+                            keyExtractor={item => item}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity style={styles.genreItem} onPress={() => handleGenreSelect(item)}>
+                                    <Ionicons name={selectedGenres.includes(item) ? "checkbox" : "square-outline"} size={24} color="#007AFF" />
+                                    <Text style={styles.genreText}>{item}</Text>
+                                </TouchableOpacity>
+                            )}
+                            numColumns={2}
+                        />
+                        <Button title="Done" onPress={() => setIsGenreModalVisible(false)} />
+                    </View>
+                </View>
+            </Modal>
          </KeyboardAvoidingView>
      );
 }
@@ -411,12 +482,64 @@ const styles = StyleSheet.create({
     noSuggestionText: { padding: 12, fontStyle: 'italic', color: '#888' },
     dateButton: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, width: '100%', backgroundColor: '#f9f9f9', justifyContent: 'center', alignItems: 'flex-start' },
     dateButtonText: { fontSize: 16, color: '#333' },
-    attributionContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 20, marginBottom: 8, },
-    poweredByText: { fontSize: 10, color: '#888', },
-    linkText: {
+    advancedSearchToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+    },
+    advancedSearchText: {
+        fontSize: 16,
         color: '#007AFF',
-        textDecorationLine: 'underline',
-        fontSize: 10,
+        marginRight: 5,
+    },
+    advancedSearchContainer: {
+        width: '100%',
+        padding: 10,
+        backgroundColor: '#f9f9f9',
+        borderRadius: 8,
+        marginBottom: 15,
+    },
+    advancedLabel: {
+        fontSize: 16,
+        fontWeight: '500',
+        marginBottom: 10,
+    },
+    radiusOptionsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginBottom: 15,
+    },
+    radiusButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#007AFF',
+        marginBottom: 5,
+    },
+    radiusButtonSelected: {
+        backgroundColor: '#007AFF',
+    },
+    radiusText: {
+        color: '#007AFF',
+    },
+    radiusTextSelected: {
+        color: '#FFFFFF'
+    },
+    genreButton: {
+        height: 50,
+        borderColor: '#cccccc',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 15,
+        width: '100%',
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+    },
+    genreButtonText: {
+        fontSize: 16,
+        color: '#333'
     },
     buttonContainer: { width: '100%', marginTop: 10, marginBottom: 20 },
     customButton: {
@@ -456,5 +579,20 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 20,
+    },
+    genreItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 10,
+        width: '50%',
+    },
+    genreText: {
+        marginLeft: 10,
+        fontSize: 16,
     },
 });

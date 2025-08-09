@@ -27,7 +27,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.concertfindr",
-      "versionCode": 48,
+      "versionCode": 49,
       "permissions": [
         "android.permission.INTERNET"
       ]

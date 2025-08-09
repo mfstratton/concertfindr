@@ -16,7 +16,6 @@ import {
     Image,
     Modal,
     ScrollView,
-    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,7 +52,6 @@ const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
 export default function SearchInputScreen() {
     const router = useRouter();
-    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -288,14 +286,13 @@ export default function SearchInputScreen() {
                         activeOpacity={1}
                         onPressOut={() => setShowDatePicker(null)}
                     >
-                        <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
+                        <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
                             <DateTimePicker
                                 value={tempDate}
                                 mode="date"
                                 display="spinner"
                                 onChange={handleDateChange}
                                 minimumDate={showDatePicker === 'end' ? (startDate || undefined) : new Date()}
-                                theme={colorScheme === 'dark' ? 'dark' : 'light'}
                             />
                             <Button title="Done" onPress={handleDonePressIOS} />
                         </TouchableOpacity>
@@ -372,6 +369,32 @@ export default function SearchInputScreen() {
                     </TouchableOpacity>
 
                     {renderDatePicker()}
+
+                    <TouchableOpacity style={styles.advancedSearchToggle} onPress={() => setIsAdvancedSearchVisible(!isAdvancedSearchVisible)}>
+                        <Text style={styles.advancedSearchText}>Advanced Search</Text>
+                        <Ionicons name={isAdvancedSearchVisible ? "chevron-up" : "chevron-down"} size={20} color="#007AFF" />
+                    </TouchableOpacity>
+
+                    {isAdvancedSearchVisible && (
+                        <View style={styles.advancedSearchContainer}>
+                            <Text style={styles.advancedLabel}>Search Radius (miles)</Text>
+                            <View style={styles.radiusOptionsContainer}>
+                                {RADIUS_OPTIONS.map(radius => (
+                                    <TouchableOpacity
+                                        key={radius}
+                                        style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]}
+                                        onPress={() => setSelectedRadius(radius)}
+                                    >
+                                        <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            <Text style={styles.advancedLabel}>Genre</Text>
+                            <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}>
+                                <Text style={styles.genreButtonText}>{selectedGenres.length > 0 ? selectedGenres.join(', ') : 'All Genres'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                     <View style={styles.buttonContainer}>
                         {Platform.OS === 'ios' ? (

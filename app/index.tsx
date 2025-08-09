@@ -190,16 +190,20 @@ export default function SearchInputScreen() {
         const pickerToShow = showDatePicker;
         if (Platform.OS === 'android') {
             setShowDatePicker(null);
-        }
-        if (event.type === 'set' && selectedDate) {
-            if (pickerToShow === 'start') {
-                setStartDate(selectedDate);
-            } else {
-                if (startDate && selectedDate < startDate) {
-                    Alert.alert("Invalid Range", "End date cannot be before start date.");
+            if (event.type === 'set' && selectedDate) {
+                if (pickerToShow === 'start') {
+                    setStartDate(selectedDate);
                 } else {
-                    setEndDate(selectedDate);
+                    if (startDate && selectedDate < startDate) {
+                        Alert.alert("Invalid Range", "End date cannot be before start date.");
+                    } else {
+                        setEndDate(selectedDate);
+                    }
                 }
+            }
+        } else {
+            if (selectedDate) {
+                setTempDate(selectedDate);
             }
         }
     };
@@ -231,7 +235,7 @@ export default function SearchInputScreen() {
             if (selectedGenres.length === GENRE_OPTIONS.length) {
                 setSelectedGenres([]);
             } else {
-                setSelectedGenres(GENRE_OPTIONS);
+                setSelectedGenres([...GENRE_OPTIONS]);
             }
             return;
         }
@@ -241,9 +245,6 @@ export default function SearchInputScreen() {
                 ? prevGenres.filter(g => g !== genre)
                 : [...prevGenres, genre];
 
-            if (newGenres.length === GENRE_OPTIONS.length) {
-                return GENRE_OPTIONS;
-            }
             return newGenres;
         });
     };

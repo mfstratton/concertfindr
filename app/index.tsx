@@ -184,43 +184,25 @@ export default function SearchInputScreen() {
         setSessionToken(uuidv4());
     };
 
-    const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        const pickerToShow = showDatePicker;
-        if (Platform.OS === 'android') {
-            setShowDatePicker(null);
-        }
+    const onChangeStartDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        setShowDatePicker(null);
         if (event.type === 'set' && selectedDate) {
-            if (pickerToShow === 'start') {
-                setStartDate(selectedDate);
-            } else {
-                if (startDate && selectedDate < startDate) {
-                    Alert.alert("Invalid Range", "End date cannot be before start date.");
-                } else {
-                    setEndDate(selectedDate);
-                }
-            }
+            setStartDate(selectedDate);
         }
     };
-
-    const handleDonePressIOS = () => {
-        const pickerToShow = showDatePicker;
+    const onChangeEndDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
         setShowDatePicker(null);
-        if (pickerToShow === 'start') {
-            setStartDate(tempDate);
-        } else if (pickerToShow === 'end') {
-            if (startDate && tempDate < startDate) {
+        if (event.type === 'set' && selectedDate) {
+            if (startDate && selectedDate < startDate) {
                 Alert.alert("Invalid Range", "End date cannot be before start date.");
             } else {
-                setEndDate(tempDate);
+                setEndDate(selectedDate);
             }
         }
     };
-
     const openDatePicker = (picker: 'start' | 'end') => {
         Keyboard.dismiss();
         setShowSuggestions(false);
-        const initialDate = picker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date());
-        setTempDate(initialDate);
         setShowDatePicker(picker);
     };
 
@@ -256,52 +238,6 @@ export default function SearchInputScreen() {
     };
 
     if (!appIsReady) return null;
-
-    const renderDatePicker = () => {
-        const isPickerVisible = showDatePicker !== null;
-        if (!isPickerVisible) return null;
-
-        if (Platform.OS === 'android') {
-            return (
-                <DateTimePicker
-                    value={showDatePicker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date())}
-                    mode="date"
-                    display="default"
-                    onChange={handleDateChange}
-                    minimumDate={showDatePicker === 'end' ? (startDate || new Date()) : new Date()}
-                />
-            );
-        }
-
-        if (Platform.OS === 'ios') {
-            return (
-                <Modal
-                    transparent={true}
-                    animationType="slide"
-                    visible={isPickerVisible}
-                    onRequestClose={() => setShowDatePicker(null)}
-                >
-                    <TouchableOpacity
-                        style={styles.modalContainer}
-                        activeOpacity={1}
-                        onPressOut={() => setShowDatePicker(null)}
-                    >
-                        <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
-                            <DateTimePicker
-                                value={tempDate}
-                                mode="date"
-                                display="spinner"
-                                onChange={handleDateChange}
-                                minimumDate={showDatePicker === 'end' ? (startDate || undefined) : new Date()}
-                            />
-                            <Button title="Done" onPress={handleDonePressIOS} />
-                        </TouchableOpacity>
-                    </TouchableOpacity>
-                </Modal>
-            );
-        }
-        return null;
-    };
 
     return (
          <KeyboardAvoidingView
@@ -368,7 +304,24 @@ export default function SearchInputScreen() {
                         <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
                     </TouchableOpacity>
 
-                    {renderDatePicker()}
+                    {showDatePicker === 'start' && (
+                        <DateTimePicker
+                            value={startDate || new Date()}
+                            mode="date"
+                            display="default"
+                            onChange={onChangeStartDate}
+                            minimumDate={new Date()}
+                        />
+                    )}
+                    {showDatePicker === 'end' && (
+                        <DateTimePicker
+                            value={endDate || startDate || new Date()}
+                            mode="date"
+                            display="default"
+                            onChange={onChangeEndDate}
+                            minimumDate={startDate || new Date()}
+                        />
+                    )}
 
                     <TouchableOpacity style={styles.advancedSearchToggle} onPress={() => setIsAdvancedSearchVisible(!isAdvancedSearchVisible)}>
                         <Text style={styles.advancedSearchText}>Advanced Search</Text>
@@ -426,15 +379,15 @@ export default function SearchInputScreen() {
                 onRequestClose={() => setIsGenreModalVisible(false)}
             >
                 <View style={styles.modalContainer}>
-                    <View style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
-                        <Text style={[styles.modalTitle, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>Select Genres</Text>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Select Genres</Text>
                         <FlatList
                             data={GENRE_OPTIONS}
                             keyExtractor={item => item}
                             renderItem={({ item }) => (
                                 <TouchableOpacity style={styles.genreItem} onPress={() => handleGenreSelect(item)}>
                                     <Ionicons name={selectedGenres.includes(item) ? "checkbox" : "square-outline"} size={24} color="#007AFF" />
-                                    <Text style={[styles.genreText, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>{item}</Text>
+                                    <Text style={styles.genreText}>{item}</Text>
                                 </TouchableOpacity>
                             )}
                             numColumns={2}

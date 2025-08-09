@@ -16,6 +16,7 @@ import {
     Image,
     Modal,
     ScrollView,
+    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,6 +53,7 @@ const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
 export default function SearchInputScreen() {
     const router = useRouter();
+    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -184,34 +186,66 @@ export default function SearchInputScreen() {
         setSessionToken(uuidv4());
     };
 
-    const onChangeStartDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShowDatePicker(null);
-        if (event.type === 'set' && selectedDate) {
-            setStartDate(selectedDate);
+    const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        const pickerToShow = showDatePicker;
+        if (Platform.OS === 'android') {
+            setShowDatePicker(null);
         }
-    };
-    const onChangeEndDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShowDatePicker(null);
         if (event.type === 'set' && selectedDate) {
-            if (startDate && selectedDate < startDate) {
-                Alert.alert("Invalid Range", "End date cannot be before start date.");
+            if (pickerToShow === 'start') {
+                setStartDate(selectedDate);
             } else {
-                setEndDate(selectedDate);
+                if (startDate && selectedDate < startDate) {
+                    Alert.alert("Invalid Range", "End date cannot be before start date.");
+                } else {
+                    setEndDate(selectedDate);
+                }
             }
         }
     };
+
+    const handleDonePressIOS = () => {
+        const pickerToShow = showDatePicker;
+        setShowDatePicker(null);
+        if (pickerToShow === 'start') {
+            setStartDate(tempDate);
+        } else if (pickerToShow === 'end') {
+            if (startDate && tempDate < startDate) {
+                Alert.alert("Invalid Range", "End date cannot be before start date.");
+            } else {
+                setEndDate(tempDate);
+            }
+        }
+    };
+
     const openDatePicker = (picker: 'start' | 'end') => {
         Keyboard.dismiss();
         setShowSuggestions(false);
+        const initialDate = picker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date());
+        setTempDate(initialDate);
         setShowDatePicker(picker);
     };
 
     const handleGenreSelect = (genre: string) => {
-        setSelectedGenres(prevGenres =>
-            prevGenres.includes(genre)
+        if (genre === 'All Genres') {
+            if (selectedGenres.length === GENRE_OPTIONS.length) {
+                setSelectedGenres([]);
+            } else {
+                setSelectedGenres(GENRE_OPTIONS);
+            }
+            return;
+        }
+
+        setSelectedGenres(prevGenres => {
+            const newGenres = prevGenres.includes(genre)
                 ? prevGenres.filter(g => g !== genre)
-                : [...prevGenres, genre]
-        );
+                : [...prevGenres, genre];
+
+            if (newGenres.length === GENRE_OPTIONS.length) {
+                return GENRE_OPTIONS;
+            }
+            return newGenres;
+        });
     };
 
     const handleNavigateToResults = () => {
@@ -238,6 +272,53 @@ export default function SearchInputScreen() {
     };
 
     if (!appIsReady) return null;
+
+    const renderDatePicker = () => {
+        const isPickerVisible = showDatePicker !== null;
+        if (!isPickerVisible) return null;
+
+        if (Platform.OS === 'android') {
+            return (
+                <DateTimePicker
+                    value={showDatePicker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date())}
+                    mode="date"
+                    display="default"
+                    onChange={handleDateChange}
+                    minimumDate={showDatePicker === 'end' ? (startDate || new Date()) : new Date()}
+                />
+            );
+        }
+
+        if (Platform.OS === 'ios') {
+            return (
+                <Modal
+                    transparent={true}
+                    animationType="slide"
+                    visible={isPickerVisible}
+                    onRequestClose={() => setShowDatePicker(null)}
+                >
+                    <TouchableOpacity
+                        style={styles.modalContainer}
+                        activeOpacity={1}
+                        onPressOut={() => setShowDatePicker(null)}
+                    >
+                        <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
+                            <DateTimePicker
+                                value={tempDate}
+                                mode="date"
+                                display="spinner"
+                                onChange={handleDateChange}
+                                minimumDate={showDatePicker === 'end' ? (startDate || undefined) : new Date()}
+                                theme={colorScheme === 'dark' ? 'dark' : 'light'}
+                            />
+                            <Button title="Done" onPress={handleDonePressIOS} />
+                        </TouchableOpacity>
+                    </TouchableOpacity>
+                </Modal>
+            );
+        }
+        return null;
+    };
 
     return (
          <KeyboardAvoidingView
@@ -304,24 +385,7 @@ export default function SearchInputScreen() {
                         <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
                     </TouchableOpacity>
 
-                    {showDatePicker === 'start' && (
-                        <DateTimePicker
-                            value={startDate || new Date()}
-                            mode="date"
-                            display="default"
-                            onChange={onChangeStartDate}
-                            minimumDate={new Date()}
-                        />
-                    )}
-                    {showDatePicker === 'end' && (
-                        <DateTimePicker
-                            value={endDate || startDate || new Date()}
-                            mode="date"
-                            display="default"
-                            onChange={onChangeEndDate}
-                            minimumDate={startDate || new Date()}
-                        />
-                    )}
+                    {renderDatePicker()}
 
                     <TouchableOpacity style={styles.advancedSearchToggle} onPress={() => setIsAdvancedSearchVisible(!isAdvancedSearchVisible)}>
                         <Text style={styles.advancedSearchText}>Advanced Search</Text>
@@ -344,7 +408,7 @@ export default function SearchInputScreen() {
                             </View>
                             <Text style={styles.advancedLabel}>Genre</Text>
                             <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}>
-                                <Text style={styles.genreButtonText}>{selectedGenres.length > 0 ? selectedGenres.join(', ') : 'All Genres'}</Text>
+                                <Text style={styles.genreButtonText}>{selectedGenres.length === GENRE_OPTIONS.length || selectedGenres.length === 0 ? 'All Genres' : selectedGenres.join(', ')}</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -379,21 +443,25 @@ export default function SearchInputScreen() {
                 onRequestClose={() => setIsGenreModalVisible(false)}
             >
                 <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Select Genres</Text>
+                    <View style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
+                        <Text style={[styles.modalTitle, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>Select Genres</Text>
                         <FlatList
-                            data={GENRE_OPTIONS}
+                            data={['All Genres', ...GENRE_OPTIONS]}
                             keyExtractor={item => item}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity style={styles.genreItem} onPress={() => handleGenreSelect(item)}>
-                                    <Ionicons name={selectedGenres.includes(item) ? "checkbox" : "square-outline"} size={24} color="#007AFF" />
-                                    <Text style={styles.genreText}>{item}</Text>
-                                </TouchableOpacity>
-                            )}
+                            renderItem={({ item }) => {
+                                const isSelected = item === 'All Genres'
+                                    ? selectedGenres.length === GENRE_OPTIONS.length
+                                    : selectedGenres.includes(item);
+                                return (
+                                    <TouchableOpacity style={styles.genreItem} onPress={() => handleGenreSelect(item)}>
+                                        <Ionicons name={isSelected ? "checkbox" : "square-outline"} size={24} color="#007AFF" />
+                                        <Text style={[styles.genreText, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>{item}</Text>
+                                    </TouchableOpacity>
+                                );
+                            }}
                             numColumns={2}
                         />
                         <View style={styles.modalButtonContainer}>
-                            <Button title="All Genres" onPress={() => setSelectedGenres([])} />
                             <Button title="Done" onPress={() => setIsGenreModalVisible(false)} />
                         </View>
                     </View>

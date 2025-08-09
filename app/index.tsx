@@ -16,6 +16,7 @@ import {
     Image,
     Modal,
     ScrollView,
+    useColorScheme,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,10 +49,11 @@ interface MapboxSuggestion {
 }
 
 const GENRE_OPTIONS = ["Alternative", "Ballads/Romantic", "Blues", "Children's Music", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Holiday", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
-const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 50, 60];
+const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
 export default function SearchInputScreen() {
     const router = useRouter();
+    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -186,7 +188,9 @@ export default function SearchInputScreen() {
 
     const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
         const pickerToShow = showDatePicker;
-        setShowDatePicker(null);
+        if (Platform.OS === 'android') {
+            setShowDatePicker(null);
+        }
         if (event.type === 'set' && selectedDate) {
             if (pickerToShow === 'start') {
                 setStartDate(selectedDate);
@@ -284,13 +288,14 @@ export default function SearchInputScreen() {
                         activeOpacity={1}
                         onPressOut={() => setShowDatePicker(null)}
                     >
-                        <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
+                        <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
                             <DateTimePicker
                                 value={tempDate}
                                 mode="date"
                                 display="spinner"
                                 onChange={handleDateChange}
                                 minimumDate={showDatePicker === 'end' ? (startDate || undefined) : new Date()}
+                                theme={colorScheme === 'dark' ? 'dark' : 'light'}
                             />
                             <Button title="Done" onPress={handleDonePressIOS} />
                         </TouchableOpacity>
@@ -368,32 +373,6 @@ export default function SearchInputScreen() {
 
                     {renderDatePicker()}
 
-                    <TouchableOpacity style={styles.advancedSearchToggle} onPress={() => setIsAdvancedSearchVisible(!isAdvancedSearchVisible)}>
-                        <Text style={styles.advancedSearchText}>Advanced Search</Text>
-                        <Ionicons name={isAdvancedSearchVisible ? "chevron-up" : "chevron-down"} size={20} color="#007AFF" />
-                    </TouchableOpacity>
-
-                    {isAdvancedSearchVisible && (
-                        <View style={styles.advancedSearchContainer}>
-                            <Text style={styles.advancedLabel}>Search Radius (miles)</Text>
-                            <View style={styles.radiusOptionsContainer}>
-                                {RADIUS_OPTIONS.map(radius => (
-                                    <TouchableOpacity
-                                        key={radius}
-                                        style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]}
-                                        onPress={() => setSelectedRadius(radius)}
-                                    >
-                                        <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                            <Text style={styles.advancedLabel}>Genre</Text>
-                            <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}>
-                                <Text style={styles.genreButtonText}>{selectedGenres.length > 0 ? selectedGenres.join(', ') : 'All Genres'}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-
                     <View style={styles.buttonContainer}>
                         {Platform.OS === 'ios' ? (
                             <TouchableOpacity
@@ -424,20 +403,23 @@ export default function SearchInputScreen() {
                 onRequestClose={() => setIsGenreModalVisible(false)}
             >
                 <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Select Genres</Text>
+                    <View style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
+                        <Text style={[styles.modalTitle, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>Select Genres</Text>
                         <FlatList
                             data={GENRE_OPTIONS}
                             keyExtractor={item => item}
                             renderItem={({ item }) => (
                                 <TouchableOpacity style={styles.genreItem} onPress={() => handleGenreSelect(item)}>
                                     <Ionicons name={selectedGenres.includes(item) ? "checkbox" : "square-outline"} size={24} color="#007AFF" />
-                                    <Text style={styles.genreText}>{item}</Text>
+                                    <Text style={[styles.genreText, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>{item}</Text>
                                 </TouchableOpacity>
                             )}
                             numColumns={2}
                         />
-                        <Button title="Done" onPress={() => setIsGenreModalVisible(false)} />
+                        <View style={styles.modalButtonContainer}>
+                            <Button title="All Genres" onPress={() => setSelectedGenres([])} />
+                            <Button title="Done" onPress={() => setIsGenreModalVisible(false)} />
+                        </View>
                     </View>
                 </View>
             </Modal>
@@ -579,6 +561,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 5,
+        maxHeight: '80%',
     },
     modalTitle: {
         fontSize: 20,
@@ -595,4 +578,10 @@ const styles = StyleSheet.create({
         marginLeft: 10,
         fontSize: 16,
     },
+    modalButtonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+        marginTop: 20,
+    }
 });

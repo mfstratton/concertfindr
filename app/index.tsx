@@ -48,7 +48,7 @@ interface MapboxSuggestion {
     metadata?: any;
 }
 
-const GENRE_OPTIONS = ["Alternative", "Blues", "Children's Music", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
+const GENRE_OPTIONS = ["Alternative", "Ballads/Romantic", "Blues", "Children's Music", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Holiday", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
 export default function SearchInputScreen() {

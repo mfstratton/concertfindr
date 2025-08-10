@@ -190,19 +190,19 @@ export default function SearchInputScreen() {
         const pickerToShow = showDatePicker;
         if (Platform.OS === 'android') {
             setShowDatePicker(null);
-        }
-        if (event.type === 'set' && selectedDate) {
-            if (pickerToShow === 'start') {
-                setStartDate(selectedDate);
-            } else {
-                if (startDate && selectedDate < startDate) {
-                    Alert.alert("Invalid Range", "End date cannot be before start date.");
+            if (event.type === 'set' && selectedDate) {
+                if (pickerToShow === 'start') {
+                    setStartDate(selectedDate);
                 } else {
-                    setEndDate(selectedDate);
+                    if (startDate && selectedDate < startDate) {
+                        Alert.alert("Invalid Range", "End date cannot be before start date.");
+                    } else {
+                        setEndDate(selectedDate);
+                    }
                 }
             }
         } else {
-            if (selectedDate) {
+            if (event.type === 'set' && selectedDate) {
                 setTempDate(selectedDate);
             }
         }

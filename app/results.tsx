@@ -170,13 +170,26 @@ export default function ResultsScreen() {
 
     const getGenreIds = (genres: string[]): string => {
         const genreMap: { [key: string]: string } = {
-            "Alternative": "KnvZfZ7vAvv", "Ballads/Romantic": "KnvZfZ7vAev", "Blues": "KnvZfZ7vAvd",
-            "Children's Music": "KnvZfZ7vAv1", "Classical": "KnvZfZ7vAeA", "Country": "KnvZfZ7vAv6",
-            "Dance/Electronic": "KnvZfZ7vAvF", "Folk": "KnvZfZ7vAva", "Hip-Hop/Rap": "KnvZfZ7vAv1",
-            "Holiday": "KnvZfZ7vAvE", "Jazz": "KnvZfZ7vAvE", "Latin": "KnvZfZ7vAFe",
-            "Metal": "KnvZfZ7vAvt", "New Age": "KnvZfZ7vAee", "Pop": "KnvZfZ7vAev",
-            "R&B": "KnvZfZ7vAee", "Reggae": "KnvZfZ7vAed", "Religious": "KnvZfZ7vAAd",
-            "Rock": "KnvZfZ7vAeA", "World": "KnvZfZ7vAFr"
+            "Alternative": "KnvZfZ7vAvv",
+            "Ballads/Romantic": "KnvZfZ7vAev",
+            "Blues": "KnvZfZ7vAvd",
+            "Children's Music": "KnvZfZ7vAv1",
+            "Classical": "KnvZfZ7vAeJ",
+            "Country": "KnvZfZ7vAv6",
+            "Dance/Electronic": "KnvZfZ7vAvF",
+            "Folk": "KnvZfZ7vAva",
+            "Hip-Hop/Rap": "KnvZfZ7vAvJ",
+            "Holiday": "KnvZfZ7vAv8",
+            "Jazz": "KnvZfZ7vAvE",
+            "Latin": "KnvZfZ7vAFe",
+            "Metal": "KnvZfZ7vAvt",
+            "New Age": "KnvZfZ7vAee",
+            "Pop": "KnvZfZ7vAev",
+            "R&B": "KnvZfZ7vA_e",
+            "Reggae": "KnvZfZ7vAed",
+            "Religious": "KnvZfZ7vAAd",
+            "Rock": "KnvZfZ7vAeA",
+            "World": "KnvZfZ7vAFr"
         };
         return genres.map(genre => genreMap[genre]).filter(id => id).join(',');
     };

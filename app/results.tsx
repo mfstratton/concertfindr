@@ -171,7 +171,6 @@ export default function ResultsScreen() {
     const getGenreIds = (genres: string[]): string => {
         const genreMap: { [key: string]: string } = {
             "Alternative": "KnvZfZ7vAvv",
-            "Ballads/Romantic": "KnvZfZ7vAev",
             "Blues": "KnvZfZ7vAvd",
             "Children's Music": "KnvZfZ7vAv1",
             "Classical": "KnvZfZ7vAeJ",
@@ -179,7 +178,6 @@ export default function ResultsScreen() {
             "Dance/Electronic": "KnvZfZ7vAvF",
             "Folk": "KnvZfZ7vAva",
             "Hip-Hop/Rap": "KnvZfZ7vAvJ",
-            "Holiday": "KnvZfZ7vAv8",
             "Jazz": "KnvZfZ7vAvE",
             "Latin": "KnvZfZ7vAFe",
             "Metal": "KnvZfZ7vAvt",

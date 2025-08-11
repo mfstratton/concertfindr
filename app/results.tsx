@@ -172,7 +172,6 @@ export default function ResultsScreen() {
         const genreMap: { [key: string]: string } = {
             "Alternative": "KnvZfZ7vAvv",
             "Blues": "KnvZfZ7vAvd",
-            "Children's Music": "KnvZfZ7vAv1",
             "Classical": "KnvZfZ7vAeJ",
             "Country": "KnvZfZ7vAv6",
             "Dance/Electronic": "KnvZfZ7vAvF",

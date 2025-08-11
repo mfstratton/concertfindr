@@ -1,190 +1,308 @@
-// src/screens/ResultsScreen.js
+import React, { useState, useEffect, useRef } from 'react';
+import {
+    StyleSheet,
+    View,
+    Text,
+    Button,
+    FlatList,
+    ActivityIndicator,
+    TouchableOpacity,
+    Linking,
+    SafeAreaView,
+} from 'react-native';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Button, Linking } from 'react-native';
 
-// --- Configuration Import ---
-// Import the key and URL from your config file
-import { TICKETMASTER_API_KEY, TICKETMASTER_API_URL } from '../config/apiConfig'; // Adjust path if your file structure is different
+const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
+const ticketmasterApiKey = process.env.EXPO_PUBLIC_TICKETMASTER_API_KEY;
 
-// --- Component ---
-const ResultsScreen = ({ route, navigation }) => {
-  const [results, setResults] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+interface Coordinates {
+    lat: number;
+    lng: number;
+}
 
-  const { location, bandName, date } = route.params || {};
+interface MapboxRetrieveResponse {
+    type: "FeatureCollection";
+    features: {
+        type: "Feature";
+        geometry: {
+            type: "Point";
+            coordinates: [number, number];
+        };
+        properties: any;
+    }[];
+    attribution: string;
+}
 
-  useEffect(() => {
-    const fetchConcerts = async () => {
-      // Make sure we have an API key
-      if (!TICKETMASTER_API_KEY || TICKETMASTER_API_KEY === 'YOUR_ACTUAL_TICKETMASTER_API_KEY') {
-          setError('API Key missing or not configured in src/config/apiConfig.js');
-          setIsLoading(false);
-          return; // Stop execution if key is missing/default
-      }
+export default function ResultsScreen() {
+    const router = useRouter();
+    const params = useLocalSearchParams<{
+        mapboxId?: string,
+        formattedCityName?: string,
+        startDate?: string,
+        endDate?: string,
+        sessionToken?: string,
+        radius?: string,
+        genres?: string,
+    }>();
 
-      setIsLoading(true);
-      setError(null);
-      setResults([]);
+    const [concerts, setConcerts] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [searchTitle, setSearchTitle] = useState<string>('Concert Results');
 
-      let queryParams = `apikey=${TICKETMASTER_API_KEY}`; // <-- Use imported key
-      if (bandName) {
-        queryParams += `&keyword=${encodeURIComponent(bandName)}`;
-      }
-      if (location) {
-        queryParams += `&city=${encodeURIComponent(location)}`;
-      }
-      if (date) {
-        const startDate = `${date}T00:00:00Z`;
-        queryParams += `&startDateTime=${startDate}`;
-      }
-      // queryParams += '&sort=date,asc'; // Optional: Sort results
+    const coordCache = useRef<Record<string, Coordinates>>({});
 
-      const fullUrl = `${TICKETMASTER_API_URL}?${queryParams}`; // <-- Use imported URL
-      console.log('Fetching URL:', fullUrl);
-
-      try {
-        const response = await fetch(fullUrl);
-        if (!response.ok) {
-          const errorData = await response.json();
-          // Try to get a meaningful error from Ticketmaster response
-          const detail = errorData?.fault?.detail || errorData?.errors?.[0]?.detail || JSON.stringify(errorData);
-          throw new Error(`API Error (${response.status}): ${detail}`);
-        }
-        const data = await response.json();
-
-        const fetchedEvents = data._embedded?.events || [];
-        setResults(fetchedEvents);
-        console.log('Fetched Events:', fetchedEvents.length);
-
-      } catch (err) {
-        console.error("Fetch Error:", err);
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
+    const formatTimeAmPm = (timeString: string | undefined): string => {
+        if (!timeString) return '';
+        const timeStringParts = timeString.split(':');
+        if (timeStringParts.length < 2) return timeString;
+        const hours24 = parseInt(timeStringParts[0], 10);
+        const minutes = timeStringParts[1];
+        if (isNaN(hours24)) return timeString;
+        const ampm = hours24 >= 12 ? 'PM' : 'AM';
+        let hours12 = hours24 % 12;
+        if (hours12 === 0) { hours12 = 12; }
+        return `${hours12}:${minutes} ${ampm}`;
     };
 
-    // Only fetch if we have some search criteria or trigger explicitly
-    if (location || bandName || date) {
-        fetchConcerts();
-    } else {
-        setError("No search criteria provided.");
-        setIsLoading(false);
-    }
+    const formatDisplayDate = (dateString: string | undefined): string => {
+        if (!dateString) return '';
+        const parts = dateString.split('-');
+        if (parts.length === 3) {
+            return `${parts[1]}/${parts[2]}/${parts[0]}`;
+        }
+        return dateString;
+    };
 
-  }, [route.params]); // Dependency array remains the same
 
-  // --- Render Logic ---
-  const renderConcertItem = ({ item }) => {
-    const venueInfo = item._embedded?.venues?.[0];
-    const startDate = item.dates?.start?.localDate;
-    const startTime = item.dates?.start?.localTime;
-    const eventUrl = item.url; // URL for the event page on Ticketmaster
-
-    // Function to safely open URLs
-    const openUrl = async (url) => {
-        if (!url) return;
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-            await Linking.openURL(url);
+    useEffect(() => {
+        if (params.mapboxId && params.startDate && params.endDate && params.formattedCityName) {
+            setSearchTitle(`Concerts in ${params.formattedCityName}`);
+            fetchConcerts();
         } else {
-            console.error(`Don't know how to open this URL: ${url}`);
-            alert(`Cannot open URL. Please check link: ${url}`); // Provide feedback
+            setError("Search parameters are missing.");
+            console.error("Missing parameters for ResultsScreen:", params);
+        }
+    }, [params.mapboxId, params.startDate, params.endDate, params.formattedCityName]);
+
+    const fetchConcerts = async () => {
+        if (!params.mapboxId || !params.startDate || !params.endDate || !params.sessionToken || !params.radius) {
+            setError("Required parameters for fetching concerts are missing.");
+            return;
+        }
+        if (!ticketmasterApiKey || !mapboxAccessToken) {
+            setError("API keys not loaded.");
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setConcerts([]);
+
+        let lat: number | undefined;
+        let lng: number | undefined;
+
+        try {
+            if (coordCache.current[params.mapboxId]) {
+                console.log("Using cached coordinates for Mapbox ID:", params.mapboxId);
+                const cachedCoords = coordCache.current[params.mapboxId];
+                lat = cachedCoords.lat;
+                lng = cachedCoords.lng;
+            } else {
+                console.log("Fetching coordinates from Mapbox Retrieve API for ID:", params.mapboxId);
+                const retrieveUrl = `https://api.mapbox.com/search/searchbox/v1/retrieve/${params.mapboxId}?session_token=${params.sessionToken}&access_token=${mapboxAccessToken}`;
+                const retrieveResponse = await fetch(retrieveUrl);
+                if (!retrieveResponse.ok) {
+                    let errorData; try { errorData = await retrieveResponse.json(); } catch (e) { errorData = 'Could not parse error response body.'}
+                    throw new Error(`Mapbox Retrieve Error ${retrieveResponse.status}: ${JSON.stringify(errorData)}`);
+                }
+                const retrieveData: MapboxRetrieveResponse = await retrieveResponse.json();
+                const coordinates = retrieveData?.features?.[0]?.geometry?.coordinates;
+                lng = coordinates?.[0];
+                lat = coordinates?.[1];
+                if (lat === undefined || lng === undefined) {
+                    throw new Error('Could not extract coordinates from Mapbox.');
+                }
+                coordCache.current[params.mapboxId] = { lat, lng };
+            }
+
+            const radius = params.radius;
+            const unit = "miles";
+            const apiStartDateTime = `${params.startDate}T00:00:00Z`;
+            const endDateObj = new Date(params.endDate);
+            endDateObj.setDate(endDateObj.getDate() + 1);
+            const apiEndDateTime = `${endDateObj.toISOString().slice(0,10)}T23:59:59Z`;
+
+            const selectedGenres = params.genres ? params.genres.split(',') : [];
+            const genreQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';
+
+            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreQuery}`;
+
+            console.log("Requesting Ticketmaster URL:", ticketmasterApiUrl);
+            const tmResponse = await fetch(ticketmasterApiUrl);
+            if (!tmResponse.ok) {
+                let errorMsg = `Ticketmaster API error! Status: ${tmResponse.status}`;
+                try { const errorData = await tmResponse.json(); errorMsg += `: ${errorData?.fault?.faultstring || errorData?.errors?.[0]?.detail || 'Unknown TM error'}`; } catch (e) {}
+                throw new Error(errorMsg);
+            }
+            const tmData = await tmResponse.json();
+            let fetchedEvents: any[] = [];
+            if (tmData._embedded && tmData._embedded.events) {
+                fetchedEvents = tmData._embedded.events;
+            }
+
+            const filteredEvents = fetchedEvents.filter(event => {
+                const eventLocalDate = event.dates?.start?.localDate;
+                return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;
+            });
+            setConcerts(filteredEvents);
+
+        } catch (err: any) {
+            console.error("Error fetching concerts:", err.message);
+            setError(`Failed to fetch concerts: ${err.message}`);
+        } finally {
+            setIsLoading(false);
         }
     };
+
+    const getGenreIds = (genres: string[]): string => {
+        const genreMap: { [key: string]: string } = {
+            "Alternative": "KnvZfZ7vAvv",
+            "Blues": "KnvZfZ7vAvd",
+            "Children's Music": "KnvZfZ7vAv1",
+            "Classical": "KnvZfZ7vAeJ",
+            "Country": "KnvZfZ7vAv6",
+            "Dance/Electronic": "KnvZfZ7vAvF",
+            "Folk": "KnvZfZ7vAva",
+            "Hip-Hop/Rap": "KnvZfZ7vAvJ",
+            "Jazz": "KnvZfZ7vAvE",
+            "Latin": "KnvZfZ7vAFe",
+            "Metal": "KnvZfZ7vAvt",
+            "New Age": "KnvZfZ7vAee",
+            "Pop": "KnvZfZ7vAev",
+            "R&B": "KnvZfZ7vA_e",
+            "Reggae": "KnvZfZ7vAed",
+            "Religious": "KnvZfZ7vAAd",
+            "Rock": "KnvZfZ7vAeA",
+            "World": "KnvZfZ7vAFr"
+        };
+        return genres.map(genre => genreMap[genre]).filter(id => id).join(',');
+    };
+
+    const renderConcertItem = ({ item }: { item: any }) => (
+        <TouchableOpacity style={styles.concertItem} onPress={() => item.url && Linking.openURL(item.url)}>
+            <Text style={styles.concertName}>{item.name}</Text>
+            <Text style={styles.concertDate}>{item.dates?.start?.localDate} {formatTimeAmPm(item.dates?.start?.localTime)}</Text>
+            <Text style={styles.concertVenue}>{item._embedded?.venues?.[0]?.name} ({item._embedded?.venues?.[0]?.city?.name})</Text>
+        </TouchableOpacity>
+    );
 
     return (
-      <View style={styles.itemContainer}>
-        <Text style={styles.bandName}>{item.name}</Text>
-        {venueInfo && <Text>{venueInfo.name} - {venueInfo.city?.name}</Text>}
-        <Text>{startDate} {startTime ? `at ${startTime}` : ''}</Text>
-        {eventUrl && (
-            <Button title="View on Ticketmaster" onPress={() => openUrl(eventUrl)} />
-        )}
-         {/* Add other ticket seller links later if available in API/needed */}
-      </View>
+        <SafeAreaView style={styles.safeArea}>
+            <Stack.Screen options={{ title: searchTitle }} />
+            <View style={styles.container}>
+                <View style={styles.searchRecapContainer}>
+                    <Text style={styles.searchRecapText}>
+                        Dates: <Text style={styles.searchRecapValue}>{formatDisplayDate(params.startDate)} - {formatDisplayDate(params.endDate)}</Text>
+                    </Text>
+                </View>
+
+                <View style={styles.modifyButtonContainer}>
+                    <Button title="Modify Search" onPress={() => router.back()} color="#007AFF" />
+                </View>
+
+                {isLoading && <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />}
+                {error && <Text style={styles.errorText}>{error}</Text>}
+                {!isLoading && !error && concerts.length === 0 && (
+                    <Text style={styles.noResultsText}>No concerts found for {params.formattedCityName} between {formatDisplayDate(params.startDate)} and {formatDisplayDate(params.endDate)}.</Text>
+                )}
+                {!isLoading && !error && concerts.length > 0 && (
+                    <FlatList
+                        data={concerts}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderConcertItem}
+                        contentContainerStyle={styles.listContentContainer}
+                    />
+                )}
+            </View>
+        </SafeAreaView>
     );
-  };
+}
 
-  // --- JSX Output ---
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Concert Results</Text>
-      <Text style={styles.criteria}>
-        Criteria: {bandName || 'Any Band'}, {location || 'Any Location'}, {date || 'Any Date'}
-      </Text>
-
-      {isLoading ? (
-        <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
-      ) : error ? (
-        <Text style={styles.errorText}>Error: {error}</Text>
-      ) : results.length > 0 ? (
-        <FlatList
-          data={results}
-          renderItem={renderConcertItem}
-          keyExtractor={item => item.id}
-          style={styles.list}
-        />
-      ) : (
-        <Text style={styles.noResultsText}>No results found for your criteria.</Text> // Added style for clarity
-      )}
-    </View>
-  );
-};
-
-// --- Styles --- (Ensure styles for errorText, loader, noResultsText, criteria exist)
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
     container: {
         flex: 1,
-        padding: 20,
-        backgroundColor: '#fff',
+        paddingHorizontal: 15,
+        paddingTop: 10,
     },
-    title: {
-        fontSize: 24,
+    searchRecapContainer: {
+        paddingVertical: 10,
+        paddingHorizontal: 5,
+        marginBottom: 10,
+        backgroundColor: '#f0f0f0',
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    searchRecapText: {
+        fontSize: 15,
+        color: '#333',
+        textAlign: 'center',
+    },
+    searchRecapValue: {
         fontWeight: 'bold',
-        marginBottom: 5,
-        textAlign: 'center',
     },
-    criteria: {
-        textAlign: 'center',
+    modifyButtonContainer: {
         marginBottom: 15,
-        fontStyle: 'italic',
-        color: '#555',
+        alignItems: 'center',
     },
     loader: {
         marginTop: 50,
     },
     errorText: {
-        color: 'red',
-        textAlign: 'center',
         marginTop: 20,
+        color: '#D32F2F',
+        textAlign: 'center',
         fontSize: 16,
-        paddingHorizontal: 10, // Add some padding if error messages are long
+        paddingHorizontal: 10,
     },
     noResultsText: {
+        marginTop: 40,
+        color: '#888',
+        fontStyle: 'italic',
         textAlign: 'center',
-        marginTop: 20,
         fontSize: 16,
-        color: '#555',
     },
-    list: {
-        marginTop: 10,
+    listContentContainer: {
+        paddingBottom: 20,
     },
-    itemContainer: {
-        backgroundColor: '#f9f9f9',
-        padding: 15,
-        marginBottom: 10,
-        borderRadius: 5,
-        borderWidth: 1,
-        borderColor: '#eee',
-    },
-    bandName: {
-        fontSize: 18,
-        fontWeight: 'bold',
+    concertItem: {
+        paddingVertical: 12,
+        paddingHorizontal: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+        backgroundColor: '#fdfdfd',
         marginBottom: 5,
+        borderRadius: 4,
+    },
+    concertName: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 4,
+    },
+    concertDate: {
+        fontSize: 14,
+        color: '#555',
+        marginBottom: 2,
+    },
+    concertVenue: {
+        fontSize: 14,
+        color: '#777',
     },
 });
-
-export default ResultsScreen;

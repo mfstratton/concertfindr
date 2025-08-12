@@ -107,12 +107,10 @@ export default function ResultsScreen() {
 
         try {
             if (coordCache.current[params.mapboxId]) {
-                console.log("Using cached coordinates for Mapbox ID:", params.mapboxId);
                 const cachedCoords = coordCache.current[params.mapboxId];
                 lat = cachedCoords.lat;
                 lng = cachedCoords.lng;
             } else {
-                console.log("Fetching coordinates from Mapbox Retrieve API for ID:", params.mapboxId);
                 const retrieveUrl = `https://api.mapbox.com/search/searchbox/v1/retrieve/${params.mapboxId}?session_token=${params.sessionToken}&access_token=${mapboxAccessToken}`;
                 const retrieveResponse = await fetch(retrieveUrl);
                 if (!retrieveResponse.ok) {
@@ -137,9 +135,9 @@ export default function ResultsScreen() {
             const apiEndDateTime = `${endDateObj.toISOString().slice(0,10)}T23:59:59Z`;
 
             const selectedGenres = params.genres ? params.genres.split(',') : [];
-            const genreQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';
+            const genreKeywordQuery = selectedGenres.length > 0 ? `&keyword=${encodeURIComponent(selectedGenres.join(' '))}` : '';
 
-            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreQuery}`;
+            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreKeywordQuery}`;
 
             console.log("Requesting Ticketmaster URL:", ticketmasterApiUrl);
             const tmResponse = await fetch(ticketmasterApiUrl);
@@ -154,11 +152,13 @@ export default function ResultsScreen() {
                 fetchedEvents = tmData._embedded.events;
             }
 
-            const filteredEvents = fetchedEvents.filter(event => {
+            const activeEvents = fetchedEvents.filter(event => event.dates?.status?.code !== 'cancelled');
+
+            const filteredEventsByDate = activeEvents.filter(event => {
                 const eventLocalDate = event.dates?.start?.localDate;
                 return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;
             });
-            setConcerts(filteredEvents);
+            setConcerts(filteredEventsByDate);
 
         } catch (err: any) {
             console.error("Error fetching concerts:", err.message);
@@ -166,29 +166,6 @@ export default function ResultsScreen() {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const getGenreIds = (genres: string[]): string => {
-        const genreMap: { [key: string]: string } = {
-            "Alternative": "KnvZfZ7vAvv",
-            "Blues": "KnvZfZ7vAvd",
-            "Classical": "KnvZfZ7vAeJ",
-            "Country": "KnvZfZ7vAv6",
-            "Dance/Electronic": "KnvZfZ7vAvF",
-            "Folk": "KnvZfZ7vAva",
-            "Hip-Hop/Rap": "KnvZfZ7vAvJ",
-            "Jazz": "KnvZfZ7vAvE",
-            "Latin": "KnvZfZ7vAFe",
-            "Metal": "KnvZfZ7vAvt",
-            "New Age": "KnvZfZ7vAee",
-            "Pop": "KnvZfZ7vAev",
-            "R&B": "KnvZfZ7vA_e",
-            "Reggae": "KnvZfZ7vAed",
-            "Religious": "KnvZfZ7vAAd",
-            "Rock": "KnvZfZ7vAeA",
-            "World": "KnvZfZ7vAFr"
-        };
-        return genres.map(genre => genreMap[genre]).filter(id => id).join(',');
     };
 
     const renderConcertItem = ({ item }: { item: any }) => (

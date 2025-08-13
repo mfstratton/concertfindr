@@ -135,7 +135,7 @@ export default function ResultsScreen() {
             const apiEndDateTime = `${endDateObj.toISOString().slice(0,10)}T23:59:59Z`;
 
             const selectedGenres = params.genres ? params.genres.split(',') : [];
-            const genreKeywordQuery = selectedGenres.length > 0 ? `&keyword=${encodeURIComponent(selectedGenres.join(' '))}` : '';
+            const genreKeywordQuery = selectedGenres.length > 0 && selectedGenres[0] !== '' ? `&keyword=${encodeURIComponent(selectedGenres.join(' '))}` : '';
 
             const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreKeywordQuery}`;
 

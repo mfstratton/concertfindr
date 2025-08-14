@@ -134,8 +134,8 @@ export default function ResultsScreen() {
             endDateObj.setDate(endDateObj.getDate() + 1);
             const apiEndDateTime = `${endDateObj.toISOString().slice(0,10)}T23:59:59Z`;
 
-            const selectedGenres = params.genres ? params.genres.split(',') : [];
-            const genreKeywordQuery = selectedGenres.length > 0 && selectedGenres[0] !== '' ? `&keyword=${encodeURIComponent(selectedGenres.join(' '))}` : '';
+            const selectedGenres = (params.genres && params.genres.length > 0) ? params.genres.split(',') : [];
+            const genreKeywordQuery = selectedGenres.length > 0 ? `&keyword=${encodeURIComponent(selectedGenres.join(' '))}` : '';
 
             const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreKeywordQuery}`;
 
@@ -187,7 +187,7 @@ export default function ResultsScreen() {
                 </View>
 
                 <View style={styles.modifyButtonContainer}>
-                    <Button title="Modify Search (v4)" onPress={() => router.back()} color="#007AFF" />
+                    <Button title="Modify Search (v5)" onPress={() => router.back()} color="#007AFF" />
                 </View>
 
                 {isLoading && <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />}

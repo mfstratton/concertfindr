@@ -187,7 +187,7 @@ export default function ResultsScreen() {
                 </View>
 
                 <View style={styles.modifyButtonContainer}>
-                    <Button title="Modify Search (v5)" onPress={() => router.back()} color="#007AFF" />
+                    <Button title="Modify Search" onPress={() => router.back()} color="#007AFF" />
                 </View>
 
                 {isLoading && <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />}

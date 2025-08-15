@@ -135,9 +135,9 @@ export default function ResultsScreen() {
             const apiEndDateTime = `${endDateObj.toISOString().slice(0,10)}T23:59:59Z`;
 
             const selectedGenres = (params.genres && params.genres.length > 0) ? params.genres.split(',') : [];
-            const genreKeywordQuery = selectedGenres.length > 0 ? `&keyword=${encodeURIComponent(selectedGenres.join(' '))}` : '';
+            const genreIdQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';
 
-            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreKeywordQuery}`;
+            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreIdQuery}`;
 
             console.log("Requesting Ticketmaster URL:", ticketmasterApiUrl);
             const tmResponse = await fetch(ticketmasterApiUrl);
@@ -166,6 +166,29 @@ export default function ResultsScreen() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const getGenreIds = (genres: string[]): string => {
+        const genreMap: { [key: string]: string } = {
+            "Alternative": "KnvZfZ7vAvv",
+            "Blues": "KnvZfZ7vAvd",
+            "Classical": "KnvZfZ7vAeJ",
+            "Country": "KnvZfZ7vAv6",
+            "Dance/Electronic": "KnvZfZ7vAvF",
+            "Folk": "KnvZfZ7vAva",
+            "Hip-Hop/Rap": "KnvZfZ7vAvJ",
+            "Jazz": "KnvZfZ7vAvE",
+            "Latin": "KnvZfZ7vAFe",
+            "Metal": "KnvZfZ7vAvt",
+            "New Age": "KnvZfZ7vAee",
+            "Pop": "KnvZfZ7vAev",
+            "R&B": "KnvZfZ7vA_e",
+            "Reggae": "KnvZfZ7vAed",
+            "Religious": "KnvZfZ7vAAd",
+            "Rock": "KnvZfZ7vAeA",
+            "World": "KnvZfZ7vAFr"
+        };
+        return genres.map(genre => genreMap[genre]).filter(id => id).join(',');
     };
 
     const renderConcertItem = ({ item }: { item: any }) => (

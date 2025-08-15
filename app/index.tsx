@@ -201,7 +201,7 @@ export default function SearchInputScreen() {
                     setEndDate(selectedDate);
                 }
             }
-        } else {
+        } else if (Platform.OS === 'ios') {
             if (selectedDate) {
                 setTempDate(selectedDate);
             }
@@ -258,6 +258,12 @@ export default function SearchInputScreen() {
             Alert.alert("API Key Error", "Mapbox API key not loaded.");
             return;
         }
+
+        let genresToSend = selectedGenres;
+        if (selectedGenres.length === GENRE_OPTIONS.length) {
+            genresToSend = [];
+        }
+
         const params = {
             mapboxId: selectedMapboxId,
             formattedCityName: city,
@@ -265,7 +271,7 @@ export default function SearchInputScreen() {
             endDate: toLocalDateString(endDate),
             sessionToken: sessionToken || uuidv4(),
             radius: selectedRadius.toString(),
-            genres: selectedGenres.join(','),
+            genres: genresToSend.join(','),
         };
         router.push({ pathname: "/results", params: params });
         interactionStarted.current = false;

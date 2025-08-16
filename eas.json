@@ -18,7 +18,7 @@
       "distribution": "internal",
       "developmentClient": false,
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "apk"
       },
       "ios": {
         "simulator": false
@@ -46,8 +46,8 @@
     "production": {
       "android": {
         "serviceAccountKeyPath": "C:\\Users\\micha\\AppDevelopment\\GoogleCloudKeys\\single-inquiry-456719-q8-e1a3e3fdde04.json",
-        "track": "internal",
-        "releaseStatus": "draft"
+        "track": "production",
+        "releaseStatus": "completed"
       }
     }
   }

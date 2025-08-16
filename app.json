@@ -3,7 +3,7 @@
     "name": "ConcertFindr",
     "slug": "concertfindr",
     "owner": "findr-labs-llc",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.concertfindr",
-      "buildNumber": "33"
+      "buildNumber": "32"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +24,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.concertfindr",
-      "versionCode": 66,
+      "versionCode": 67,
       "permissions": [
         "android.permission.INTERNET"
       ]

@@ -190,20 +190,20 @@ export default function SearchInputScreen() {
         const pickerToShow = showDatePicker;
         if (Platform.OS === 'android') {
             setShowDatePicker(null);
-        }
-        if (event.type === 'set' && selectedDate) {
-            if (pickerToShow === 'start') {
-                setStartDate(selectedDate);
-            } else {
-                if (startDate && selectedDate < startDate) {
-                    Alert.alert("Invalid Range", "End date cannot be before start date.");
+            if (event.type === 'set' && selectedDate) {
+                if (pickerToShow === 'start') {
+                    setStartDate(selectedDate);
                 } else {
-                    setEndDate(selectedDate);
+                    if (startDate && selectedDate < startDate) {
+                        Alert.alert("Invalid Range", "End date cannot be before start date.");
+                    } else {
+                        setEndDate(selectedDate);
+                    }
                 }
             }
-        } else if (Platform.OS === 'ios') {
-            if (selectedDate) {
-                setTempDate(selectedDate);
+        } else {
+            if (event.type === 'set' && selectedDate) {
+                setTempDate(new Date(selectedDate));
             }
         }
     };
@@ -258,12 +258,6 @@ export default function SearchInputScreen() {
             Alert.alert("API Key Error", "Mapbox API key not loaded.");
             return;
         }
-
-        let genresToSend = selectedGenres;
-        if (selectedGenres.length === GENRE_OPTIONS.length) {
-            genresToSend = [];
-        }
-
         const params = {
             mapboxId: selectedMapboxId,
             formattedCityName: city,
@@ -271,7 +265,7 @@ export default function SearchInputScreen() {
             endDate: toLocalDateString(endDate),
             sessionToken: sessionToken || uuidv4(),
             radius: selectedRadius.toString(),
-            genres: genresToSend.join(','),
+            genres: selectedGenres.join(','),
         };
         router.push({ pathname: "/results", params: params });
         interactionStarted.current = false;

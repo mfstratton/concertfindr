@@ -202,7 +202,7 @@ export default function SearchInputScreen() {
                 }
             }
         } else {
-            if (event.type === 'set' && selectedDate) {
+            if (selectedDate) {
                 setTempDate(new Date(selectedDate));
             }
         }

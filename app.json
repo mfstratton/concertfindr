@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.concertfindr",
-      "buildNumber": "44",
+      "buildNumber": "45",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

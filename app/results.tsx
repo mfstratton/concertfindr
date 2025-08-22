@@ -201,7 +201,7 @@ export default function ResultsScreen() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <Stack.Screen options={{ title: searchTitle, headerBackTitle: '' }} />
+            <Stack.Screen options={{ title: searchTitle }} />
             <View style={styles.container}>
                 <View style={styles.searchRecapContainer}>
                     <Text style={styles.searchRecapText}>
@@ -216,13 +216,13 @@ export default function ResultsScreen() {
                 {isLoading && <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />}
                 {error && <Text style={styles.errorText}>{error}</Text>}
                 {!isLoading && !error && concerts.length === 0 && (
-                    <Text style={styles.noResultsText}>No concerts found for {params.formattedCityName} between {formatDisplayDate(params.startDate)} and {formatDisplayDate(endDate)}.</Text>
+                    <Text style={styles.noResultsText}>No concerts found for {params.formattedCityName} between {formatDisplayDate(params.startDate)} and {formatDisplayDate(params.endDate)}.</Text>
                 )}
                 {!isLoading && !error && concerts.length > 0 && (
                     <FlatList
                         data={concerts}
                         keyExtractor={(item) => item.id}
-                        renderItem={renderConcertItem}
+                        renderItem={renderItem}
                         contentContainerStyle={styles.listContentContainer}
                     />
                 )}

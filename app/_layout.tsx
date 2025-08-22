@@ -14,6 +14,7 @@ export default function RootLayout() {
         name="results"
         options={{
           title: 'Concert Results',
+          headerBackTitle: '', // ✅ This is the fix
           headerBackTitleVisible: false
         }}
       />

@@ -81,7 +81,11 @@ export default function SearchInputScreen() {
                 setSessionToken(uuidv4());
                 const savedGenres = await AsyncStorage.getItem('user_genres');
                 if (savedGenres !== null) {
+                    // If the user has saved preferences, load them
                     setSelectedGenres(JSON.parse(savedGenres));
+                } else {
+                    // Otherwise, this is a first launch, so select all genres by default
+                    setSelectedGenres([...GENRE_OPTIONS]);
                 }
                 isInitialGenreLoadDone.current = true;
                 await new Promise(resolve => setTimeout(resolve, 1500));
@@ -186,18 +190,14 @@ export default function SearchInputScreen() {
         setSessionToken(uuidv4());
     };
 
-    // --- Start of Changed Code ---
     const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
         const currentDate = selectedDate || tempDate;
 
         if (Platform.OS === 'ios') {
-            // For iOS, the onChange event fires continuously as the user scrolls.
-            // We update a temporary state variable, which is only saved when "Done" is pressed.
             setTempDate(currentDate);
-            return; // Exit here for iOS to avoid closing the picker
+            return;
         }
 
-        // For Android, the picker closes immediately after a date is selected.
         setShowDatePicker(null);
         if (event.type === 'set') {
             const pickerToShow = showDatePicker;
@@ -212,7 +212,6 @@ export default function SearchInputScreen() {
             }
         }
     };
-    // --- End of Changed Code ---
 
     const handleDonePressIOS = () => {
         const pickerToShow = showDatePicker;

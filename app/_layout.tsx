@@ -13,7 +13,8 @@ export default function RootLayout() {
       <Stack.Screen
         name="results"
         options={{
-          title: 'Concert Results'
+          title: 'Concert Results',
+          headerBackTitleVisible: false
         }}
       />
     </Stack>

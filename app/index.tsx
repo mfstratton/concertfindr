@@ -82,6 +82,8 @@ export default function SearchInputScreen() {
                 const savedGenres = await AsyncStorage.getItem('user_genres');
                 if (savedGenres !== null) {
                     setSelectedGenres(JSON.parse(savedGenres));
+                } else {
+                    setSelectedGenres([...GENRE_OPTIONS]);
                 }
                 isInitialGenreLoadDone.current = true;
                 await new Promise(resolve => setTimeout(resolve, 1500));
@@ -343,7 +345,7 @@ export default function SearchInputScreen() {
                         <Image source={require('../assets/images/icon.png')} style={styles.logo} />
                         <Text style={styles.appNameTitle}>ConcertFindr™</Text>
                     </View>
-                    <Text style={styles.tagline}>All you need is a city and a date. (vFix)</Text>
+                    <Text style={styles.tagline}>All you need is a city and a date.</Text>
 
                     <View style={styles.inputContainer}>
                         <TextInput

@@ -186,27 +186,33 @@ export default function SearchInputScreen() {
         setSessionToken(uuidv4());
     };
 
+    // --- Start of Changed Code ---
     const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        const pickerToShow = showDatePicker;
-        if (Platform.OS === 'android') {
-            setShowDatePicker(null);
+        const currentDate = selectedDate || tempDate;
+
+        if (Platform.OS === 'ios') {
+            // For iOS, the onChange event fires continuously as the user scrolls.
+            // We update a temporary state variable, which is only saved when "Done" is pressed.
+            setTempDate(currentDate);
+            return; // Exit here for iOS to avoid closing the picker
         }
-        if (event.type === 'set' && selectedDate) {
+
+        // For Android, the picker closes immediately after a date is selected.
+        setShowDatePicker(null);
+        if (event.type === 'set') {
+            const pickerToShow = showDatePicker;
             if (pickerToShow === 'start') {
-                setStartDate(selectedDate);
+                setStartDate(currentDate);
             } else {
-                if (startDate && selectedDate < startDate) {
+                if (startDate && currentDate < startDate) {
                     Alert.alert("Invalid Range", "End date cannot be before start date.");
                 } else {
-                    setEndDate(selectedDate);
+                    setEndDate(currentDate);
                 }
-            }
-        } else if (Platform.OS === 'ios') {
-            if (selectedDate) {
-                setTempDate(selectedDate);
             }
         }
     };
+    // --- End of Changed Code ---
 
     const handleDonePressIOS = () => {
         const pickerToShow = showDatePicker;
@@ -590,6 +596,22 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         backgroundColor: '#A9A9A9',
+    },
+    attributionContainer: {
+        position: 'absolute',
+        bottom: 10,
+        left: 20,
+        right: 20,
+        alignItems: 'center',
+    },
+    poweredByText: {
+        fontSize: 12,
+        color: '#888',
+        textAlign: 'center',
+    },
+    linkText: {
+        color: '#007AFF',
+        textDecorationLine: 'underline',
     },
     errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
     noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },

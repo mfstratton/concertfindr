@@ -201,7 +201,10 @@ export default function ResultsScreen() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <Stack.Screen options={{ title: searchTitle }} />
+            <Stack.Screen options={{
+                title: searchTitle,
+                headerBackTitle: '' // This is the only change needed
+            }} />
             <View style={styles.container}>
                 <View style={styles.searchRecapContainer}>
                     <Text style={styles.searchRecapText}>

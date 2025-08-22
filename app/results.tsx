@@ -222,7 +222,7 @@ export default function ResultsScreen() {
                     <FlatList
                         data={concerts}
                         keyExtractor={(item) => item.id}
-                        renderItem={renderItem}
+                        renderItem={renderConcertItem}
                         contentContainerStyle={styles.listContentContainer}
                     />
                 )}

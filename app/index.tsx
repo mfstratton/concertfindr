@@ -82,8 +82,6 @@ export default function SearchInputScreen() {
                 const savedGenres = await AsyncStorage.getItem('user_genres');
                 if (savedGenres !== null) {
                     setSelectedGenres(JSON.parse(savedGenres));
-                } else {
-                    setSelectedGenres([...GENRE_OPTIONS]);
                 }
                 isInitialGenreLoadDone.current = true;
                 await new Promise(resolve => setTimeout(resolve, 1500));
@@ -192,20 +190,20 @@ export default function SearchInputScreen() {
         const pickerToShow = showDatePicker;
         if (Platform.OS === 'android') {
             setShowDatePicker(null);
-            if (event.type === 'set' && selectedDate) {
-                if (pickerToShow === 'start') {
-                    setStartDate(selectedDate);
+        }
+        if (event.type === 'set' && selectedDate) {
+            if (pickerToShow === 'start') {
+                setStartDate(selectedDate);
+            } else {
+                if (startDate && selectedDate < startDate) {
+                    Alert.alert("Invalid Range", "End date cannot be before start date.");
                 } else {
-                    if (startDate && selectedDate < startDate) {
-                        Alert.alert("Invalid Range", "End date cannot be before start date.");
-                    } else {
-                        setEndDate(selectedDate);
-                    }
+                    setEndDate(selectedDate);
                 }
             }
-        } else {
+        } else if (Platform.OS === 'ios') {
             if (selectedDate) {
-                setTempDate(new Date(selectedDate));
+                setTempDate(selectedDate);
             }
         }
     };

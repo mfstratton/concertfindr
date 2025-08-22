@@ -81,10 +81,8 @@ export default function SearchInputScreen() {
                 setSessionToken(uuidv4());
                 const savedGenres = await AsyncStorage.getItem('user_genres');
                 if (savedGenres !== null) {
-                    // If the user has saved preferences, load them
                     setSelectedGenres(JSON.parse(savedGenres));
                 } else {
-                    // Otherwise, this is a first launch, so select all genres by default
                     setSelectedGenres([...GENRE_OPTIONS]);
                 }
                 isInitialGenreLoadDone.current = true;
@@ -318,7 +316,7 @@ export default function SearchInputScreen() {
                             <DateTimePicker
                                 value={tempDate}
                                 mode="date"
-                                display="spinner"
+                                display="inline" // Changed from "spinner" to "inline"
                                 onChange={handleDateChange}
                                 minimumDate={showDatePicker === 'end' ? (startDate || undefined) : new Date()}
                                 theme={colorScheme === 'dark' ? 'dark' : 'light'}

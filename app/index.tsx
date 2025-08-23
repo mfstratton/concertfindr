@@ -17,8 +17,10 @@ import {
     Modal,
     ScrollView,
     useColorScheme,
+    SafeAreaView, // Added for the modal
 } from 'react-native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+// --- New Calendar Import ---
+import { Calendar, DateData } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
 import 'react-native-get-random-values';
@@ -31,6 +33,7 @@ SplashScreen.preventAutoHideAsync();
 
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
+// (Interfaces and constants remain the same)
 interface MapboxSuggestion {
     name: string;
     mapbox_id: string;
@@ -47,7 +50,6 @@ interface MapboxSuggestion {
     maki?: string;
     metadata?: any;
 }
-
 const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
@@ -59,18 +61,19 @@ export default function SearchInputScreen() {
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
-    const [showDatePicker, setShowDatePicker] = useState<null | 'start' | 'end'>(null);
-    const [tempDate, setTempDate] = useState(new Date());
     const [suggestions, setSuggestions] = useState<MapboxSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isCityLoading, setIsCityLoading] = useState(false);
     const [sessionToken, setSessionToken] = useState<string | null>(null);
     const [appIsReady, setAppIsReady] = useState(false);
-
     const [isAdvancedSearchVisible, setIsAdvancedSearchVisible] = useState(false);
     const [selectedRadius, setSelectedRadius] = useState<number>(30);
     const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
     const [isGenreModalVisible, setIsGenreModalVisible] = useState(false);
+
+    // --- New state for the calendar modal ---
+    const [isCalendarVisible, setCalendarVisible] = useState(false);
+    const [datePickerType, setDatePickerType] = useState<'start' | 'end'>('start');
 
     const interactionStarted = useRef(false);
     const isInitialGenreLoadDone = useRef(false);
@@ -115,7 +118,6 @@ export default function SearchInputScreen() {
         return regionCode ? `${name}, ${regionCode}` : name;
     };
 
-    // Helper function to format dates for display
     const formatDate = (date: Date | null): string => {
         if (!date) return 'Select Date';
         return date.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -133,10 +135,8 @@ export default function SearchInputScreen() {
             setSuggestions([]); setShowSuggestions(false);
             return;
         }
-
         setIsCityLoading(true);
         const apiUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(text)}&language=en&limit=5&types=locality,place&country=US&session_token=${currentSessionToken}&access_token=${mapboxAccessToken}`;
-
         try {
             const response = await fetch(apiUrl);
             if (!response.ok) throw new Error('Mapbox Suggest API Error');
@@ -194,52 +194,41 @@ export default function SearchInputScreen() {
         setSessionToken(uuidv4());
     };
 
-    // --- Date Picker Logic for Modal ---
-    const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        const currentDate = selectedDate || tempDate;
-
-        if (Platform.OS === 'ios') {
-            setTempDate(currentDate);
+    // --- New functions for the custom calendar ---
+    const openCalendar = (type: 'start' | 'end') => {
+        if (type === 'end' && !startDate) {
+            Alert.alert("Hold On!", "Please select a start date first.");
             return;
         }
+        setDatePickerType(type);
+        setCalendarVisible(true);
+    };
 
-        setShowDatePicker(null);
-        if (event.type === 'set') {
-            const pickerToShow = showDatePicker;
-            if (pickerToShow === 'start') {
-                setStartDate(currentDate);
-            } else {
-                if (startDate && currentDate < startDate) {
-                    Alert.alert("Invalid Range", "End date cannot be before start date.");
-                } else {
-                    setEndDate(currentDate);
-                }
+    const onDayPress = (day: DateData) => {
+        const selectedDate = new Date(day.timestamp);
+        if (datePickerType === 'start') {
+            setStartDate(selectedDate);
+            if (endDate && selectedDate > endDate) {
+                setEndDate(selectedDate);
             }
+        } else {
+            setEndDate(selectedDate);
         }
+        setCalendarVisible(false);
     };
 
-    const handleDonePressIOS = () => {
-        const pickerToShow = showDatePicker;
-        setShowDatePicker(null);
-        if (pickerToShow === 'start') {
-            setStartDate(tempDate);
-        } else if (pickerToShow === 'end') {
-            if (startDate && tempDate < startDate) {
-                Alert.alert("Invalid Range", "End date cannot be before start date.");
-            } else {
-                setEndDate(tempDate);
-            }
+    const getMarkedDates = () => {
+        const marked: { [key: string]: any } = {};
+        if (startDate) {
+            marked[toLocalDateString(startDate)] = { selected: true, color: '#007AFF', startingDay: true, textColor: 'white' };
         }
+        if (endDate) {
+            marked[toLocalDateString(endDate)] = { selected: true, color: '#007AFF', endingDay: true, textColor: 'white' };
+        }
+        return marked;
     };
 
-    const openDatePicker = (picker: 'start' | 'end') => {
-        Keyboard.dismiss();
-        setShowSuggestions(false);
-        const initialDate = picker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date());
-        setTempDate(initialDate);
-        setShowDatePicker(picker);
-    };
-
+    // (handleGenreSelect and handleNavigateToResults remain the same)
     const handleGenreSelect = (genre: string) => {
         if (genre === 'All Genres') {
             if (selectedGenres.length === GENRE_OPTIONS.length) {
@@ -249,7 +238,6 @@ export default function SearchInputScreen() {
             }
             return;
         }
-
         setSelectedGenres(prevGenres => {
             const newGenres = prevGenres.includes(genre)
                 ? prevGenres.filter(g => g !== genre)
@@ -258,7 +246,6 @@ export default function SearchInputScreen() {
             return newGenres;
         });
     };
-
     const handleNavigateToResults = () => {
         if (!selectedMapboxId || !startDate || !endDate || !city) {
             Alert.alert("Validation Error", "Please select a city from suggestions and both dates.");
@@ -268,12 +255,10 @@ export default function SearchInputScreen() {
             Alert.alert("API Key Error", "Mapbox API key not loaded.");
             return;
         }
-
         let genresToSend = selectedGenres;
         if (selectedGenres.length === GENRE_OPTIONS.length) {
             genresToSend = [];
         }
-
         const params = {
             mapboxId: selectedMapboxId,
             formattedCityName: city,
@@ -290,54 +275,6 @@ export default function SearchInputScreen() {
 
     if (!appIsReady) return null;
 
-    // --- Date Picker component, now using Modal for iOS ---
-    const renderDatePicker = () => {
-        const isPickerVisible = showDatePicker !== null;
-        if (!isPickerVisible) return null;
-
-        if (Platform.OS === 'android') {
-            return (
-                <DateTimePicker
-                    value={showDatePicker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date())}
-                    mode="date"
-                    display="default"
-                    onChange={handleDateChange}
-                    minimumDate={showDatePicker === 'end' ? (startDate || new Date()) : new Date()}
-                />
-            );
-        }
-
-        if (Platform.OS === 'ios') {
-            return (
-                <Modal
-                    transparent={true}
-                    animationType="slide"
-                    visible={isPickerVisible}
-                    onRequestClose={() => setShowDatePicker(null)}
-                >
-                    <TouchableOpacity
-                        style={styles.modalContainer}
-                        activeOpacity={1}
-                        onPressOut={() => setShowDatePicker(null)}
-                    >
-                        <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
-                            <DateTimePicker
-                                value={tempDate}
-                                mode="date"
-                                display="inline"
-                                onChange={handleDateChange}
-                                minimumDate={showDatePicker === 'end' ? (startDate || undefined) : new Date()}
-                                theme={colorScheme === 'dark' ? 'dark' : 'light'}
-                            />
-                            <Button title="Done" onPress={handleDonePressIOS} />
-                        </TouchableOpacity>
-                    </TouchableOpacity>
-                </Modal>
-            );
-        }
-        return null;
-    };
-
     return (
          <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -350,137 +287,70 @@ export default function SearchInputScreen() {
                 keyboardShouldPersistTaps="handled"
             >
                 <View style={styles.container}>
+                    {/* (Header, City Input, etc. remain the same) */}
                     <View style={styles.headerContainer}>
                         <Image source={require('../assets/images/icon.png')} style={styles.logo} />
                         <Text style={styles.appNameTitle}>ConcertFindr™</Text>
                     </View>
                     <Text style={styles.tagline}>All you need is a city and a date.</Text>
-
                     <View style={styles.inputContainer}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter City (e.g., Chicago)"
-                            placeholderTextColor="#8e8e93"
-                            value={city}
-                            onChangeText={handleCityChange}
-                            autoCapitalize="words"
-                            onFocus={() => {
-                                if (!interactionStarted.current) {
-                                    interactionStarted.current = true;
-                                    if (!sessionToken) setSessionToken(uuidv4());
-                                }
-                                if (selectedMapboxId) setShowSuggestions(false);
-                            }}
-                        />
-                        {city.length > 0 && (
-                            <TouchableOpacity onPress={handleClearCity} style={styles.clearIconTouchable}>
-                                <Ionicons name="close-circle" size={22} color="#888" />
-                            </TouchableOpacity>
-                        )}
-                        {isCityLoading && city.length > 2 && (
-                             <ActivityIndicator size="small" color="#6200EE" style={styles.cityLoadingIndicator} />
-                         )}
-                        {showSuggestions && city.length > 0 && !selectedMapboxId && (
-                            <FlatList
-                                style={styles.suggestionsList}
-                                data={suggestions}
-                                keyExtractor={(item) => item.mapbox_id}
-                                renderItem={({ item }) => (
-                                    <TouchableOpacity style={styles.suggestionItem} onPress={() => onSuggestionPress(item)}>
-                                        <Text style={styles.suggestionText}>{formatSuggestionText(item)}</Text>
-                                    </TouchableOpacity>
-                                )}
-                                ListEmptyComponent={<Text style={styles.noSuggestionText}>No matching cities found</Text>}
-                                keyboardShouldPersistTaps="handled"
-                                nestedScrollEnabled={true}
-                            />
-                        )}
+                        <TextInput style={styles.input} placeholder="Enter City (e.g., Chicago)" placeholderTextColor="#8e8e93" value={city} onChangeText={handleCityChange} autoCapitalize="words" onFocus={() => { if (!interactionStarted.current) { interactionStarted.current = true; if (!sessionToken) setSessionToken(uuidv4()); } if (selectedMapboxId) setShowSuggestions(false); }} />
+                        {city.length > 0 && ( <TouchableOpacity onPress={handleClearCity} style={styles.clearIconTouchable}> <Ionicons name="close-circle" size={22} color="#888" /> </TouchableOpacity> )}
+                        {isCityLoading && city.length > 2 && ( <ActivityIndicator size="small" color="#6200EE" style={styles.cityLoadingIndicator} /> )}
+                        {showSuggestions && city.length > 0 && !selectedMapboxId && ( <FlatList style={styles.suggestionsList} data={suggestions} keyExtractor={(item) => item.mapbox_id} renderItem={({ item }) => ( <TouchableOpacity style={styles.suggestionItem} onPress={() => onSuggestionPress(item)}> <Text style={styles.suggestionText}>{formatSuggestionText(item)}</Text> </TouchableOpacity> )} ListEmptyComponent={<Text style={styles.noSuggestionText}>No matching cities found</Text>} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true} /> )}
                     </View>
 
-                    {/* --- Back to TouchableOpacity buttons for dates --- */}
-                    <TouchableOpacity onPress={() => openDatePicker('start')} style={styles.dateButton}>
+                    {/* --- Updated Date Buttons --- */}
+                    <TouchableOpacity onPress={() => openCalendar('start')} style={styles.dateButton}>
                         <Text style={styles.dateButtonText}>Start Date: {formatDate(startDate)}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => openDatePicker('end')} style={styles.dateButton}>
+                    <TouchableOpacity
+                        onPress={() => openCalendar('end')}
+                        style={[styles.dateButton, !startDate && styles.disabledDateButton]}
+                        disabled={!startDate}
+                    >
                         <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
                     </TouchableOpacity>
 
-                    {renderDatePicker()}
-
+                    {/* (Advanced Search and Search Button remain the same) */}
                     <TouchableOpacity style={styles.advancedSearchToggle} onPress={() => setIsAdvancedSearchVisible(!isAdvancedSearchVisible)}>
                         <Text style={styles.advancedSearchText}>Advanced Search</Text>
                         <Ionicons name={isAdvancedSearchVisible ? "chevron-up" : "chevron-down"} size={20} color="#007AFF" />
                     </TouchableOpacity>
-
-                    {isAdvancedSearchVisible && (
-                        <View style={styles.advancedSearchContainer}>
-                            <Text style={styles.advancedLabel}>Search Radius (miles)</Text>
-                            <View style={styles.radiusOptionsContainer}>
-                                {RADIUS_OPTIONS.map(radius => (
-                                    <TouchableOpacity
-                                        key={radius}
-                                        style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]}
-                                        onPress={() => setSelectedRadius(radius)}
-                                    >
-                                        <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                            <Text style={styles.advancedLabel}>Genre</Text>
-                            <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}>
-                                <Text style={styles.genreButtonText}>{selectedGenres.length === GENRE_OPTIONS.length || selectedGenres.length === 0 ? 'All Genres' : selectedGenres.join(', ')}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-
+                    {isAdvancedSearchVisible && ( <View style={styles.advancedSearchContainer}> <Text style={styles.advancedLabel}>Search Radius (miles)</Text> <View style={styles.radiusOptionsContainer}> {RADIUS_OPTIONS.map(radius => ( <TouchableOpacity key={radius} style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]} onPress={() => setSelectedRadius(radius)}> <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text> </TouchableOpacity> ))} </View> <Text style={styles.advancedLabel}>Genre</Text> <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}> <Text style={styles.genreButtonText}>{selectedGenres.length === GENRE_OPTIONS.length || selectedGenres.length === 0 ? 'All Genres' : selectedGenres.join(', ')}</Text> </TouchableOpacity> </View> )}
                     <View style={styles.buttonContainer}>
-                        {Platform.OS === 'ios' ? (
-                            <TouchableOpacity
-                                style={[styles.customButton, (!selectedMapboxId || !startDate || !endDate) && styles.disabledButton]}
-                                onPress={handleNavigateToResults}
-                                disabled={!selectedMapboxId || !startDate || !endDate}
-                            >
-                                <Text style={styles.customButtonText}>Search Concerts</Text>
-                            </TouchableOpacity>
-                        ) : (
-                           <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} />
-                        )}
+                        {Platform.OS === 'ios' ? ( <TouchableOpacity style={[styles.customButton, (!selectedMapboxId || !startDate || !endDate) && styles.disabledButton]} onPress={handleNavigateToResults} disabled={!selectedMapboxId || !startDate || !endDate}> <Text style={styles.customButtonText}>Search Concerts</Text> </TouchableOpacity> ) : ( <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} /> )}
                     </View>
-
                     <View style={styles.attributionContainer}>
-                        <Text style={styles.poweredByText}>
-                            © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text>
-                            {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text>
-                            {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text>
-                        </Text>
+                        <Text style={styles.poweredByText}> © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text> {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text> {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text> </Text>
                     </View>
                 </View>
             </ScrollView>
+
+            {/* --- New Calendar Modal --- */}
             <Modal
                 animationType="slide"
-                transparent={true}
-                visible={isGenreModalVisible}
-                onRequestClose={() => setIsGenreModalVisible(false)}
+                transparent={false}
+                visible={isCalendarVisible}
+                onRequestClose={() => setCalendarVisible(false)}
             >
+                <SafeAreaView style={{ flex: 1 }}>
+                    <Calendar
+                        onDayPress={onDayPress}
+                        markedDates={getMarkedDates()}
+                        minDate={datePickerType === 'end' ? toLocalDateString(startDate!) : toLocalDateString(new Date())}
+                        current={toLocalDateString(datePickerType === 'start' ? startDate || new Date() : endDate || startDate!)}
+                    />
+                    <Button title="Cancel" onPress={() => setCalendarVisible(false)} />
+                </SafeAreaView>
+            </Modal>
+
+            {/* (Genre Modal remains the same) */}
+            <Modal animationType="slide" transparent={true} visible={isGenreModalVisible} onRequestClose={() => setIsGenreModalVisible(false)}>
                 <View style={styles.modalContainer}>
                     <View style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
                         <Text style={[styles.modalTitle, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>Select Genres</Text>
-                        <FlatList
-                            data={['All Genres', ...GENRE_OPTIONS]}
-                            keyExtractor={item => item}
-                            renderItem={({ item }) => {
-                                const isSelected = item === 'All Genres'
-                                    ? selectedGenres.length === GENRE_OPTIONS.length
-                                    : selectedGenres.includes(item);
-                                return (
-                                    <TouchableOpacity style={styles.genreItem} onPress={() => handleGenreSelect(item)}>
-                                        <Ionicons name={isSelected ? "checkbox" : "square-outline"} size={24} color="#007AFF" />
-                                        <Text style={[styles.genreText, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>{item}</Text>
-                                    </TouchableOpacity>
-                                );
-                            }}
-                            numColumns={2}
-                        />
+                        <FlatList data={['All Genres', ...GENRE_OPTIONS]} keyExtractor={item => item} renderItem={({ item }) => { const isSelected = item === 'All Genres' ? selectedGenres.length === GENRE_OPTIONS.length : selectedGenres.includes(item); return ( <TouchableOpacity style={styles.genreItem} onPress={() => handleGenreSelect(item)}> <Ionicons name={isSelected ? "checkbox" : "square-outline"} size={24} color="#007AFF" /> <Text style={[styles.genreText, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>{item}</Text> </TouchableOpacity> ); }} numColumns={2} />
                         <View style={styles.modalButtonContainer}>
                             <Button title="Done" onPress={() => setIsGenreModalVisible(false)} />
                         </View>
@@ -492,31 +362,18 @@ export default function SearchInputScreen() {
 }
 
 const styles = StyleSheet.create({
+    // (Your existing styles remain the same, with this one addition)
+    disabledDateButton: {
+        backgroundColor: '#f0f0f0',
+        borderColor: '#e0e0e0',
+    },
     keyboardAvoidingContainer: { flex: 1 },
-    scrollView: {
-        flex: 1,
-    },
-    scrollViewContent: {
-        flexGrow: 1,
-        justifyContent: 'center'
-    },
+    scrollView: { flex: 1, },
+    scrollViewContent: { flexGrow: 1, justifyContent: 'center' },
     container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : 20, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center', backgroundColor: '#FFFFFF' },
-    headerContainer: {
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    logo: {
-        width: 60,
-        height: 60,
-        resizeMode: 'contain',
-        marginBottom: 8,
-    },
-    appNameTitle: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#333333',
-        textAlign: 'center',
-    },
+    headerContainer: { alignItems: 'center', marginBottom: 15, },
+    logo: { width: 60, height: 60, resizeMode: 'contain', marginBottom: 8, },
+    appNameTitle: { fontSize: 32, fontWeight: 'bold', color: '#333333', textAlign: 'center', },
     tagline: { fontSize: 17, color: '#666', textAlign: 'center', marginBottom: 25, fontStyle: 'italic', },
     inputContainer: { width: '100%', marginBottom: 10, position: 'relative', zIndex: 10 },
     input: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, width: '100%', backgroundColor: '#f9f9f9', fontSize: 16, paddingRight: 45 },
@@ -528,140 +385,30 @@ const styles = StyleSheet.create({
     noSuggestionText: { padding: 12, fontStyle: 'italic', color: '#888' },
     dateButton: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, width: '100%', backgroundColor: '#f9f9f9', justifyContent: 'center', alignItems: 'flex-start' },
     dateButtonText: { fontSize: 16, color: '#333' },
-    advancedSearchToggle: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 10,
-    },
-    advancedSearchText: {
-        fontSize: 16,
-        color: '#007AFF',
-        marginRight: 5,
-    },
-    advancedSearchContainer: {
-        width: '100%',
-        padding: 10,
-        backgroundColor: '#f9f9f9',
-        borderRadius: 8,
-        marginBottom: 15,
-    },
-    advancedLabel: {
-        fontSize: 16,
-        fontWeight: '500',
-        marginBottom: 10,
-    },
-    radiusOptionsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        marginBottom: 15,
-    },
-    radiusButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#007AFF',
-        marginBottom: 5,
-    },
-    radiusButtonSelected: {
-        backgroundColor: '#007AFF',
-    },
-    radiusText: {
-        color: '#007AFF',
-    },
-    radiusTextSelected: {
-        color: '#FFFFFF'
-    },
-    genreButton: {
-        height: 50,
-        borderColor: '#cccccc',
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 15,
-        width: '100%',
-        backgroundColor: '#FFFFFF',
-        justifyContent: 'center',
-    },
-    genreButtonText: {
-        fontSize: 16,
-        color: '#333'
-    },
+    advancedSearchToggle: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, },
+    advancedSearchText: { fontSize: 16, color: '#007AFF', marginRight: 5, },
+    advancedSearchContainer: { width: '100%', padding: 10, backgroundColor: '#f9f9f9', borderRadius: 8, marginBottom: 15, },
+    advancedLabel: { fontSize: 16, fontWeight: '500', marginBottom: 10, },
+    radiusOptionsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 15, },
+    radiusButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: '#007AFF', marginBottom: 5, },
+    radiusButtonSelected: { backgroundColor: '#007AFF', },
+    radiusText: { color: '#007AFF', },
+    radiusTextSelected: { color: '#FFFFFF' },
+    genreButton: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, width: '100%', backgroundColor: '#FFFFFF', justifyContent: 'center', },
+    genreButtonText: { fontSize: 16, color: '#333' },
     buttonContainer: { width: '100%', marginTop: 10, marginBottom: 20 },
-    customButton: {
-        backgroundColor: '#007AFF',
-        paddingVertical: 12,
-        paddingHorizontal: 30,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    customButtonText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    disabledButton: {
-        backgroundColor: '#A9A9A9',
-    },
-    attributionContainer: {
-        position: 'absolute',
-        bottom: 10,
-        left: 20,
-        right: 20,
-        alignItems: 'center',
-    },
-    poweredByText: {
-        fontSize: 12,
-        color: '#888',
-        textAlign: 'center',
-    },
-    linkText: {
-        color: '#007AFF',
-        textDecorationLine: 'underline',
-    },
+    customButton: { backgroundColor: '#007AFF', paddingVertical: 12, paddingHorizontal: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
+    customButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', },
+    disabledButton: { backgroundColor: '#A9A9A9', },
+    attributionContainer: { position: 'absolute', bottom: 10, left: 20, right: 20, alignItems: 'center', },
+    poweredByText: { fontSize: 12, color: '#888', textAlign: 'center', },
+    linkText: { color: '#007AFF', textDecorationLine: 'underline', },
     errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
     noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 20,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: -2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
-        maxHeight: '80%',
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 20,
-    },
-    genreItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 10,
-        width: '50%',
-    },
-    genreText: {
-        marginLeft: 10,
-        fontSize: 16,
-    },
-    modalButtonContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        width: '100%',
-        marginTop: 20,
-    }
+    modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)', },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: -2, }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5, maxHeight: '80%', },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, },
+    genreItem: { flexDirection: 'row', alignItems: 'center', padding: 10, width: '50%', },
+    genreText: { marginLeft: 10, fontSize: 16, },
+    modalButtonContainer: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', marginTop: 20, }
 });

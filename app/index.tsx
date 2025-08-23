@@ -57,10 +57,9 @@ export default function SearchInputScreen() {
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
-    const [startDate, setStartDate] = useState<Date | null>(null);
-    const [endDate, setEndDate] = useState<Date | null>(null);
-    const [showDatePicker, setShowDatePicker] = useState<null | 'start' | 'end'>(null);
-    const [tempDate, setTempDate] = useState(new Date());
+    // Initialize with today's date
+    const [startDate, setStartDate] = useState<Date>(new Date());
+    const [endDate, setEndDate] = useState<Date>(new Date());
     const [suggestions, setSuggestions] = useState<MapboxSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isCityLoading, setIsCityLoading] = useState(false);
@@ -114,7 +113,6 @@ export default function SearchInputScreen() {
         const regionCode = suggestion.context?.region?.region_code;
         return regionCode ? `${name}, ${regionCode}` : name;
     };
-    const formatDate = (date: Date | null): string => { if (!date) return 'Select Date'; return date.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }); };
     const toLocalDateString = (date: Date): string => {
         const offset = date.getTimezoneOffset() * 60000;
         const localDate = new Date(date.getTime() - offset);
@@ -188,49 +186,25 @@ export default function SearchInputScreen() {
         setSessionToken(uuidv4());
     };
 
-    const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        const currentDate = selectedDate || tempDate;
-
-        if (Platform.OS === 'ios') {
-            setTempDate(currentDate);
-            return;
-        }
-
-        setShowDatePicker(null);
-        if (event.type === 'set') {
-            const pickerToShow = showDatePicker;
-            if (pickerToShow === 'start') {
-                setStartDate(currentDate);
-            } else {
-                if (startDate && currentDate < startDate) {
-                    Alert.alert("Invalid Range", "End date cannot be before start date.");
-                } else {
-                    setEndDate(currentDate);
-                }
+    // --- New, simpler date change handlers ---
+    const handleStartDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        if (event.type === 'set' && selectedDate) {
+            setStartDate(selectedDate);
+            // Ensure end date is not before the new start date
+            if (endDate < selectedDate) {
+                setEndDate(selectedDate);
             }
         }
     };
 
-    const handleDonePressIOS = () => {
-        const pickerToShow = showDatePicker;
-        setShowDatePicker(null);
-        if (pickerToShow === 'start') {
-            setStartDate(tempDate);
-        } else if (pickerToShow === 'end') {
-            if (startDate && tempDate < startDate) {
+    const handleEndDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        if (event.type === 'set' && selectedDate) {
+            if (startDate && selectedDate < startDate) {
                 Alert.alert("Invalid Range", "End date cannot be before start date.");
             } else {
-                setEndDate(tempDate);
+                setEndDate(selectedDate);
             }
         }
-    };
-
-    const openDatePicker = (picker: 'start' | 'end') => {
-        Keyboard.dismiss();
-        setShowSuggestions(false);
-        const initialDate = picker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date());
-        setTempDate(initialDate);
-        setShowDatePicker(picker);
     };
 
     const handleGenreSelect = (genre: string) => {
@@ -282,53 +256,6 @@ export default function SearchInputScreen() {
     };
 
     if (!appIsReady) return null;
-
-    const renderDatePicker = () => {
-        const isPickerVisible = showDatePicker !== null;
-        if (!isPickerVisible) return null;
-
-        if (Platform.OS === 'android') {
-            return (
-                <DateTimePicker
-                    value={showDatePicker === 'start' ? (startDate || new Date()) : (endDate || startDate || new Date())}
-                    mode="date"
-                    display="default"
-                    onChange={handleDateChange}
-                    minimumDate={showDatePicker === 'end' ? (startDate || new Date()) : new Date()}
-                />
-            );
-        }
-
-        if (Platform.OS === 'ios') {
-            return (
-                <Modal
-                    transparent={true}
-                    animationType="slide"
-                    visible={isPickerVisible}
-                    onRequestClose={() => setShowDatePicker(null)}
-                >
-                    <TouchableOpacity
-                        style={styles.modalContainer}
-                        activeOpacity={1}
-                        onPressOut={() => setShowDatePicker(null)}
-                    >
-                        <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
-                            <DateTimePicker
-                                value={tempDate}
-                                mode="date"
-                                display="inline" // Changed from "spinner" to "inline"
-                                onChange={handleDateChange}
-                                minimumDate={showDatePicker === 'end' ? (startDate || undefined) : new Date()}
-                                theme={colorScheme === 'dark' ? 'dark' : 'light'}
-                            />
-                            <Button title="Done" onPress={handleDonePressIOS} />
-                        </TouchableOpacity>
-                    </TouchableOpacity>
-                </Modal>
-            );
-        }
-        return null;
-    };
 
     return (
          <KeyboardAvoidingView
@@ -388,14 +315,29 @@ export default function SearchInputScreen() {
                             />
                         )}
                     </View>
-                    <TouchableOpacity onPress={() => openDatePicker('start')} style={styles.dateButton}>
-                        <Text style={styles.dateButtonText}>Start Date: {formatDate(startDate)}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => openDatePicker('end')} style={styles.dateButton}>
-                        <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
-                    </TouchableOpacity>
 
-                    {renderDatePicker()}
+                    {/* --- New Date Picker Layout --- */}
+                    <View style={styles.datePickerContainer}>
+                        <View style={styles.dateRow}>
+                            <Text style={styles.dateLabel}>Start Date</Text>
+                            <DateTimePicker
+                                value={startDate}
+                                mode="date"
+                                display={Platform.OS === 'ios' ? 'compact' : 'default'}
+                                onChange={handleStartDateChange}
+                            />
+                        </View>
+                        <View style={styles.dateRow}>
+                            <Text style={styles.dateLabel}>End Date</Text>
+                            <DateTimePicker
+                                value={endDate}
+                                mode="date"
+                                display={Platform.OS === 'ios' ? 'compact' : 'default'}
+                                onChange={handleEndDateChange}
+                                minimumDate={startDate}
+                            />
+                        </View>
+                    </View>
 
                     <TouchableOpacity style={styles.advancedSearchToggle} onPress={() => setIsAdvancedSearchVisible(!isAdvancedSearchVisible)}>
                         <Text style={styles.advancedSearchText}>Advanced Search</Text>
@@ -426,14 +368,14 @@ export default function SearchInputScreen() {
                     <View style={styles.buttonContainer}>
                         {Platform.OS === 'ios' ? (
                             <TouchableOpacity
-                                style={[styles.customButton, (!selectedMapboxId || !startDate || !endDate) && styles.disabledButton]}
+                                style={[styles.customButton, !selectedMapboxId && styles.disabledButton]}
                                 onPress={handleNavigateToResults}
-                                disabled={!selectedMapboxId || !startDate || !endDate}
+                                disabled={!selectedMapboxId}
                             >
                                 <Text style={styles.customButtonText}>Search Concerts</Text>
                             </TouchableOpacity>
                         ) : (
-                           <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} />
+                           <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId} />
                         )}
                     </View>
 
@@ -516,8 +458,29 @@ const styles = StyleSheet.create({
     suggestionItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
     suggestionText: { fontSize: 16 },
     noSuggestionText: { padding: 12, fontStyle: 'italic', color: '#888' },
-    dateButton: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, width: '100%', backgroundColor: '#f9f9f9', justifyContent: 'center', alignItems: 'flex-start' },
-    dateButtonText: { fontSize: 16, color: '#333' },
+    // --- New Styles for Date Pickers ---
+    datePickerContainer: {
+        width: '100%',
+        marginBottom: 15,
+    },
+    dateRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        height: 50,
+        borderColor: '#cccccc',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 15,
+        backgroundColor: '#f9f9f9',
+        marginBottom: 15,
+    },
+    dateLabel: {
+        fontSize: 16,
+        color: '#333',
+    },
+    // --- End of New Styles ---
     advancedSearchToggle: {
         flexDirection: 'row',
         alignItems: 'center',

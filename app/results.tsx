@@ -130,14 +130,14 @@ export default function ResultsScreen() {
             const radius = params.radius;
             const unit = "miles";
 
-            // --- FIX #1: Use local time for more accurate searching ---
-            const localStartDateTime = `${params.startDate}T00:00:00`;
-            const localEndDateTime = `${params.endDate}T23:59:59`;
+            // --- FIX: Use the correct startDateTime and endDateTime parameters (without 'Z' for local time) ---
+            const startDateTime = `${params.startDate}T00:00:00`;
+            const endDateTime = `${params.endDate}T23:59:59`;
 
             const selectedGenres = (params.genres && params.genres.length > 0) ? params.genres.split(',') : [];
             const genreIdQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';
 
-            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&localStartDateTime=${localStartDateTime}&localEndDateTime=${localEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreIdQuery}`;
+            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${startDateTime}&endDateTime=${endDateTime}&sort=date,asc&classificationName=Music&size=200${genreIdQuery}`;
 
             console.log("Requesting Ticketmaster URL:", ticketmasterApiUrl);
             const tmResponse = await fetch(ticketmasterApiUrl);
@@ -154,7 +154,12 @@ export default function ResultsScreen() {
 
             const activeEvents = fetchedEvents.filter(event => event.dates?.status?.code !== 'cancelled');
 
-            setConcerts(activeEvents);
+            // --- FIX: Add a final client-side filter as a safety net ---
+            const filteredEventsByDate = activeEvents.filter(event => {
+                const eventLocalDate = event.dates?.start?.localDate;
+                return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;
+            });
+            setConcerts(filteredEventsByDate);
 
         } catch (err: any) {
             console.error("Error fetching concerts:", err.message);
@@ -187,7 +192,6 @@ export default function ResultsScreen() {
         return genres.map(genre => genreMap[genre]).filter(id => id).join(',');
     };
 
-    // --- FIX #2: Make the rendering crash-proof ---
     const renderConcertItem = ({ item }: { item: any }) => {
         const venueName = item._embedded?.venues?.[0]?.name || 'Venue TBD';
         const cityName = item._embedded?.venues?.[0]?.city?.name || 'City TBD';

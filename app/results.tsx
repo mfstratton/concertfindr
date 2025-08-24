@@ -129,15 +129,15 @@ export default function ResultsScreen() {
 
             const radius = params.radius;
             const unit = "miles";
-            const apiStartDateTime = `${params.startDate}T00:00:00Z`;
-            const endDateObj = new Date(params.endDate);
-            endDateObj.setDate(endDateObj.getDate() + 1);
-            const apiEndDateTime = `${endDateObj.toISOString().slice(0,10)}T23:59:59Z`;
+
+            // --- FIX #1: Use local time for more accurate searching ---
+            const localStartDateTime = `${params.startDate}T00:00:00`;
+            const localEndDateTime = `${params.endDate}T23:59:59`;
 
             const selectedGenres = (params.genres && params.genres.length > 0) ? params.genres.split(',') : [];
             const genreIdQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';
 
-            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${apiStartDateTime}&endDateTime=${apiEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreIdQuery}`;
+            const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&localStartDateTime=${localStartDateTime}&localEndDateTime=${localEndDateTime}&sort=date,asc&classificationName=Music&size=200${genreIdQuery}`;
 
             console.log("Requesting Ticketmaster URL:", ticketmasterApiUrl);
             const tmResponse = await fetch(ticketmasterApiUrl);
@@ -154,11 +154,7 @@ export default function ResultsScreen() {
 
             const activeEvents = fetchedEvents.filter(event => event.dates?.status?.code !== 'cancelled');
 
-            const filteredEventsByDate = activeEvents.filter(event => {
-                const eventLocalDate = event.dates?.start?.localDate;
-                return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;
-            });
-            setConcerts(filteredEventsByDate);
+            setConcerts(activeEvents);
 
         } catch (err: any) {
             console.error("Error fetching concerts:", err.message);
@@ -191,13 +187,19 @@ export default function ResultsScreen() {
         return genres.map(genre => genreMap[genre]).filter(id => id).join(',');
     };
 
-    const renderConcertItem = ({ item }: { item: any }) => (
-        <TouchableOpacity style={styles.concertItem} onPress={() => item.url && Linking.openURL(item.url)}>
-            <Text style={styles.concertName}>{item.name}</Text>
-            <Text style={styles.concertDate}>{item.dates?.start?.localDate} {formatTimeAmPm(item.dates?.start?.localTime)}</Text>
-            <Text style={styles.concertVenue}>{item._embedded?.venues?.[0]?.name} ({item._embedded?.venues?.[0]?.city?.name})</Text>
-        </TouchableOpacity>
-    );
+    // --- FIX #2: Make the rendering crash-proof ---
+    const renderConcertItem = ({ item }: { item: any }) => {
+        const venueName = item._embedded?.venues?.[0]?.name || 'Venue TBD';
+        const cityName = item._embedded?.venues?.[0]?.city?.name || 'City TBD';
+
+        return (
+            <TouchableOpacity style={styles.concertItem} onPress={() => item.url && Linking.openURL(item.url)}>
+                <Text style={styles.concertName}>{item.name || 'Event Name Not Available'}</Text>
+                <Text style={styles.concertDate}>{item.dates?.start?.localDate} {formatTimeAmPm(item.dates?.start?.localTime)}</Text>
+                <Text style={styles.concertVenue}>{venueName} ({cityName})</Text>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.safeArea}>

@@ -3,7 +3,6 @@ import {
     StyleSheet,
     View,
     Text,
-    Button,
     TextInput,
     Alert,
     Platform,
@@ -52,7 +51,6 @@ interface MapboxSuggestion {
 const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
-// --- New Vibrant Calendar Theme ---
 const calendarTheme = {
     backgroundColor: '#ffffff',
     calendarBackground: '#ffffff',
@@ -78,7 +76,7 @@ const calendarTheme = {
 
 export default function SearchInputScreen() {
     const router = useRouter();
-    const colorScheme = useColorScheme(); // You can adapt the theme for dark mode if you wish
+    const colorScheme = useColorScheme();
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
@@ -93,8 +91,6 @@ export default function SearchInputScreen() {
     const [selectedRadius, setSelectedRadius] = useState<number>(30);
     const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
     const [isGenreModalVisible, setIsGenreModalVisible] = useState(false);
-
-    // --- State for the new calendar modal ---
     const [isCalendarVisible, setCalendarVisible] = useState(false);
     const [datePickerType, setDatePickerType] = useState<'start' | 'end'>('start');
     const [tempDate, setTempDate] = useState<Date | null>(null);
@@ -218,7 +214,6 @@ export default function SearchInputScreen() {
         setSessionToken(uuidv4());
     };
 
-    // --- New, improved functions for the custom calendar ---
     const openCalendar = (type: 'start' | 'end') => {
         if (type === 'end' && !startDate) {
             Alert.alert("Hold On!", "Please select a start date first.");
@@ -230,7 +225,7 @@ export default function SearchInputScreen() {
     };
 
     const onDayPress = (day: DateData) => {
-        const selectedDate = new Date(day.dateString + 'T00:00:00'); // Timezone fix
+        const selectedDate = new Date(day.dateString + 'T00:00:00');
         setTempDate(selectedDate);
     };
 
@@ -351,7 +346,6 @@ export default function SearchInputScreen() {
                 </View>
             </ScrollView>
 
-            {/* --- New Calendar Modal with Done Button --- */}
             <Modal
                 animationType="slide"
                 transparent={false}
@@ -363,12 +357,20 @@ export default function SearchInputScreen() {
                         theme={calendarTheme}
                         onDayPress={onDayPress}
                         markedDates={getMarkedDates()}
-                        minDate={datePickerType === 'end' ? toLocalDateString(startDate!) : undefined}
+                        // --- FIX #1: Prevent selecting past dates for the start date ---
+                        minDate={datePickerType === 'end' ? toLocalDateString(startDate!) : toLocalDateString(new Date())}
                         current={toLocalDateString(initialCalendarDate)}
+                        // --- FIX #3: Enable the year picker ---
+                        onMonthChange={() => {}} // This enables the month/year header tap
                     />
+                    {/* --- FIX #2: Use custom buttons for a consistent look --- */}
                     <View style={styles.calendarButtons}>
-                         <Button title="Cancel" onPress={() => setCalendarVisible(false)} color="#FF3B30" />
-                         <Button title="Done" onPress={handleDone} disabled={!tempDate} />
+                        <TouchableOpacity onPress={() => setCalendarVisible(false)} style={styles.calendarButton}>
+                            <Text style={[styles.calendarButtonText, { color: '#FF3B30' }]}>Cancel</Text>
+                        </TouchableOpacity>
+                         <TouchableOpacity onPress={handleDone} disabled={!tempDate} style={styles.calendarButton}>
+                            <Text style={[styles.calendarButtonText, { fontWeight: 'bold' }, !tempDate && styles.disabledCalendarButtonText]}>Done</Text>
+                         </TouchableOpacity>
                     </View>
                 </SafeAreaView>
             </Modal>
@@ -393,16 +395,28 @@ const styles = StyleSheet.create({
         backgroundColor: '#f0f0f0',
         borderColor: '#e0e0e0',
     },
-    // --- New Styles for Calendar Modal ---
     calendarSafeArea: {
         flex: 1,
+        backgroundColor: 'white',
     },
     calendarButtons: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        padding: 10,
+        justifyContent: 'space-between',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
         borderTopWidth: 1,
         borderTopColor: '#cccccc',
+    },
+    // --- New Styles for Custom Calendar Buttons ---
+    calendarButton: {
+        padding: 10,
+    },
+    calendarButtonText: {
+        fontSize: 17,
+        color: '#007AFF',
+    },
+    disabledCalendarButtonText: {
+        color: '#d3d3d3',
     },
     keyboardAvoidingContainer: { flex: 1 },
     scrollView: { flex: 1, },

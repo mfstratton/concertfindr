@@ -17,6 +17,7 @@ import {
     ScrollView,
     useColorScheme,
     SafeAreaView,
+    Button,
 } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
@@ -340,9 +341,11 @@ export default function SearchInputScreen() {
                     <View style={styles.buttonContainer}>
                         {Platform.OS === 'ios' ? ( <TouchableOpacity style={[styles.customButton, (!selectedMapboxId || !startDate || !endDate) && styles.disabledButton]} onPress={handleNavigateToResults} disabled={!selectedMapboxId || !startDate || !endDate}> <Text style={styles.customButtonText}>Search Concerts</Text> </TouchableOpacity> ) : ( <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} /> )}
                     </View>
-                    <View style={styles.attributionContainer}>
-                        <Text style={styles.poweredByText}> © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text> {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text> {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text> </Text>
-                    </View>
+                </View>
+
+                {/* --- Moved attribution outside the main content container --- */}
+                <View style={styles.attributionContainer}>
+                    <Text style={styles.poweredByText}> © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text> {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text> {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text> </Text>
                 </View>
             </ScrollView>
 
@@ -357,13 +360,10 @@ export default function SearchInputScreen() {
                         theme={calendarTheme}
                         onDayPress={onDayPress}
                         markedDates={getMarkedDates()}
-                        // --- FIX #1: Prevent selecting past dates for the start date ---
                         minDate={datePickerType === 'end' ? toLocalDateString(startDate!) : toLocalDateString(new Date())}
                         current={toLocalDateString(initialCalendarDate)}
-                        // --- FIX #3: Enable the year picker ---
-                        onMonthChange={() => {}} // This enables the month/year header tap
+                        onMonthChange={() => {}}
                     />
-                    {/* --- FIX #2: Use custom buttons for a consistent look --- */}
                     <View style={styles.calendarButtons}>
                         <TouchableOpacity onPress={() => setCalendarVisible(false)} style={styles.calendarButton}>
                             <Text style={[styles.calendarButtonText, { color: '#FF3B30' }]}>Cancel</Text>
@@ -407,7 +407,6 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#cccccc',
     },
-    // --- New Styles for Custom Calendar Buttons ---
     calendarButton: {
         padding: 10,
     },
@@ -420,8 +419,16 @@ const styles = StyleSheet.create({
     },
     keyboardAvoidingContainer: { flex: 1 },
     scrollView: { flex: 1, },
-    scrollViewContent: { flexGrow: 1, justifyContent: 'center' },
-    container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : 20, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center', backgroundColor: '#FFFFFF' },
+    scrollViewContent: {
+        flexGrow: 1,
+    },
+    container: {
+        flex: 1,
+        paddingTop: Platform.OS === 'ios' ? 20 : 20,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+    },
     headerContainer: { alignItems: 'center', marginBottom: 15, },
     logo: { width: 60, height: 60, resizeMode: 'contain', marginBottom: 8, },
     appNameTitle: { fontSize: 32, fontWeight: 'bold', color: '#333333', textAlign: 'center', },
@@ -447,11 +454,16 @@ const styles = StyleSheet.create({
     radiusTextSelected: { color: '#FFFFFF' },
     genreButton: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, width: '100%', backgroundColor: '#FFFFFF', justifyContent: 'center', },
     genreButtonText: { fontSize: 16, color: '#333' },
-    buttonContainer: { width: '100%', marginTop: 10, marginBottom: 20 },
+    buttonContainer: { width: '100%', marginTop: 10 },
     customButton: { backgroundColor: '#007AFF', paddingVertical: 12, paddingHorizontal: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
     customButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', },
     disabledButton: { backgroundColor: '#A9A9A9', },
-    attributionContainer: { position: 'absolute', bottom: 10, left: 20, right: 20, alignItems: 'center', },
+    // --- Updated Attribution Style ---
+    attributionContainer: {
+        width: '100%',
+        alignItems: 'center',
+        paddingVertical: 20,
+    },
     poweredByText: { fontSize: 12, color: '#888', textAlign: 'center', },
     linkText: { color: '#007AFF', textDecorationLine: 'underline', },
     errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },

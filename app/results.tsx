@@ -130,9 +130,9 @@ export default function ResultsScreen() {
             const radius = params.radius;
             const unit = "miles";
 
-            // --- FIX: Use the correct startDateTime and endDateTime parameters (without 'Z' for local time) ---
-            const startDateTime = `${params.startDate}T00:00:00`;
-            const endDateTime = `${params.endDate}T23:59:59`;
+            // --- FIX: Add the 'Z' to specify UTC time as required by the API ---
+            const startDateTime = `${params.startDate}T00:00:00Z`;
+            const endDateTime = `${params.endDate}T23:59:59Z`;
 
             const selectedGenres = (params.genres && params.genres.length > 0) ? params.genres.split(',') : [];
             const genreIdQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';
@@ -143,7 +143,11 @@ export default function ResultsScreen() {
             const tmResponse = await fetch(ticketmasterApiUrl);
             if (!tmResponse.ok) {
                 let errorMsg = `Ticketmaster API error! Status: ${tmResponse.status}`;
-                try { const errorData = await tmResponse.json(); errorMsg += `: ${errorData?.fault?.faultstring || errorData?.errors?.[0]?.detail || 'Unknown TM error'}`; } catch (e) {}
+                try {
+                    const errorData = await tmResponse.json();
+                    const detail = errorData?.fault?.faultstring || errorData?.errors?.[0]?.detail || 'Unknown TM error';
+                    errorMsg += `: ${detail}`;
+                } catch (e) {}
                 throw new Error(errorMsg);
             }
             const tmData = await tmResponse.json();
@@ -154,7 +158,6 @@ export default function ResultsScreen() {
 
             const activeEvents = fetchedEvents.filter(event => event.dates?.status?.code !== 'cancelled');
 
-            // --- FIX: Add a final client-side filter as a safety net ---
             const filteredEventsByDate = activeEvents.filter(event => {
                 const eventLocalDate = event.dates?.start?.localDate;
                 return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;

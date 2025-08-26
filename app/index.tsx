@@ -81,8 +81,8 @@ export default function SearchInputScreen() {
 
     const [city, setCity] = useState('');
     const [selectedMapboxId, setSelectedMapboxId] = useState<string | null>(null);
-    const [startDate, setStartDate] = useState<Date | null>(null);
-    const [endDate, setEndDate] = useState<Date | null>(null);
+    const [startDate, setStartDate] = useState<Date>(new Date());
+    const [endDate, setEndDate] = useState<Date>(new Date());
     const [suggestions, setSuggestions] = useState<MapboxSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isCityLoading, setIsCityLoading] = useState(false);
@@ -95,6 +95,7 @@ export default function SearchInputScreen() {
     const [isCalendarVisible, setCalendarVisible] = useState(false);
     const [datePickerType, setDatePickerType] = useState<'start' | 'end'>('start');
     const [tempDate, setTempDate] = useState<Date | null>(null);
+    const [visibleMonth, setVisibleMonth] = useState(new Date());
 
     const interactionStarted = useRef(false);
     const isInitialGenreLoadDone = useRef(false);
@@ -216,12 +217,10 @@ export default function SearchInputScreen() {
     };
 
     const openCalendar = (type: 'start' | 'end') => {
-        if (type === 'end' && !startDate) {
-            Alert.alert("Hold On!", "Please select a start date first.");
-            return;
-        }
         setDatePickerType(type);
-        setTempDate(type === 'start' ? startDate : endDate);
+        const initialDate = type === 'start' ? startDate : endDate;
+        setTempDate(initialDate);
+        setVisibleMonth(initialDate || new Date());
         setCalendarVisible(true);
     };
 
@@ -237,7 +236,11 @@ export default function SearchInputScreen() {
                 setEndDate(tempDate);
             }
         } else {
-            setEndDate(tempDate);
+             if (startDate && tempDate && tempDate < startDate) {
+                Alert.alert("Invalid Range", "End date cannot be before start date.");
+            } else {
+                setEndDate(tempDate);
+            }
         }
         setCalendarVisible(false);
     };
@@ -296,7 +299,9 @@ export default function SearchInputScreen() {
 
     if (!appIsReady) return null;
 
-    const initialCalendarDate = datePickerType === 'end' ? (endDate || startDate || new Date()) : (startDate || new Date());
+    const initialCalendarDate = datePickerType === 'end' ? (endDate || startDate) : (startDate);
+    const today = new Date();
+    const isCurrentMonth = visibleMonth.getMonth() === today.getMonth() && visibleMonth.getFullYear() === today.getFullYear();
 
     return (
          <KeyboardAvoidingView
@@ -327,8 +332,7 @@ export default function SearchInputScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => openCalendar('end')}
-                        style={[styles.dateButton, !startDate && styles.disabledDateButton]}
-                        disabled={!startDate}
+                        style={styles.dateButton}
                     >
                         <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
                     </TouchableOpacity>
@@ -343,7 +347,6 @@ export default function SearchInputScreen() {
                     </View>
                 </View>
 
-                {/* --- Moved attribution outside the main content container --- */}
                 <View style={styles.attributionContainer}>
                     <Text style={styles.poweredByText}> © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text> {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text> {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text> </Text>
                 </View>
@@ -360,9 +363,11 @@ export default function SearchInputScreen() {
                         theme={calendarTheme}
                         onDayPress={onDayPress}
                         markedDates={getMarkedDates()}
-                        minDate={datePickerType === 'end' ? toLocalDateString(startDate!) : toLocalDateString(new Date())}
+                        minDate={toLocalDateString(new Date())}
                         current={toLocalDateString(initialCalendarDate)}
-                        onMonthChange={() => {}}
+                        onMonthChange={(month) => setVisibleMonth(new Date(month.dateString))}
+                        hideExtraDays={true}
+                        disableArrowLeft={datePickerType === 'start' && isCurrentMonth}
                     />
                     <View style={styles.calendarButtons}>
                         <TouchableOpacity onPress={() => setCalendarVisible(false)} style={styles.calendarButton}>
@@ -391,13 +396,11 @@ export default function SearchInputScreen() {
 }
 
 const styles = StyleSheet.create({
-    disabledDateButton: {
-        backgroundColor: '#f0f0f0',
-        borderColor: '#e0e0e0',
-    },
+    // Removed disabledDateButton as it's no longer needed with the default date
     calendarSafeArea: {
         flex: 1,
         backgroundColor: 'white',
+        justifyContent: 'center', // This centers the calendar vertically
     },
     calendarButtons: {
         flexDirection: 'row',
@@ -424,7 +427,7 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        paddingTop: Platform.OS === 'ios' ? 20 : 20,
+        paddingTop: Platform.OS === 'ios' ? 40 : 20,
         paddingHorizontal: 20,
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
@@ -458,7 +461,6 @@ const styles = StyleSheet.create({
     customButton: { backgroundColor: '#007AFF', paddingVertical: 12, paddingHorizontal: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
     customButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', },
     disabledButton: { backgroundColor: '#A9A9A9', },
-    // --- Updated Attribution Style ---
     attributionContainer: {
         width: '100%',
         alignItems: 'center',

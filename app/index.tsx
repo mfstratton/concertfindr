@@ -52,10 +52,11 @@ interface MapboxSuggestion {
 const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
+// --- FIX: Updated theme for better visibility ---
 const calendarTheme = {
     backgroundColor: '#ffffff',
-    calendarBackground: '#ffffff',
-    textSectionTitleColor: '#b6c1cd',
+    calendarBackground: '#f9f9f9',
+    textSectionTitleColor: '#888888',
     selectedDayBackgroundColor: '#007AFF',
     selectedDayTextColor: '#ffffff',
     todayTextColor: '#007AFF',
@@ -72,6 +73,14 @@ const calendarTheme = {
     textDayFontSize: 16,
     textMonthFontSize: 18,
     textDayHeaderFontSize: 14,
+    'stylesheet.calendar.header': {
+        header: {
+            backgroundColor: '#f0f0f0',
+            paddingVertical: 10,
+            borderTopLeftRadius: 10,
+            borderTopRightRadius: 10,
+        }
+    }
 };
 
 
@@ -364,7 +373,7 @@ export default function SearchInputScreen() {
                         onDayPress={onDayPress}
                         markedDates={getMarkedDates()}
                         minDate={toLocalDateString(new Date())}
-                        current={toLocalDateString(initialCalendarDate)}
+                        current={toLocalDateString(initialCalendarDate!)}
                         onMonthChange={(month) => setVisibleMonth(new Date(month.dateString))}
                         hideExtraDays={true}
                         disableArrowLeft={datePickerType === 'start' && isCurrentMonth}
@@ -396,11 +405,10 @@ export default function SearchInputScreen() {
 }
 
 const styles = StyleSheet.create({
-    // Removed disabledDateButton as it's no longer needed with the default date
     calendarSafeArea: {
         flex: 1,
         backgroundColor: 'white',
-        justifyContent: 'center', // This centers the calendar vertically
+        justifyContent: 'center',
     },
     calendarButtons: {
         flexDirection: 'row',
@@ -409,6 +417,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         borderTopWidth: 1,
         borderTopColor: '#cccccc',
+        backgroundColor: '#f9f9f9',
     },
     calendarButton: {
         padding: 10,

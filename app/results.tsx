@@ -130,9 +130,9 @@ export default function ResultsScreen() {
             const radius = params.radius;
             const unit = "miles";
 
-            // --- FIX: Add the 'Z' to specify UTC time as required by the API ---
-            const startDateTime = `${params.startDate}T00:00:00Z`;
-            const endDateTime = `${params.endDate}T23:59:59Z`;
+            // --- FIX: Remove 'Z' to search by local time, not UTC ---
+            const startDateTime = `${params.startDate}T00:00:00`;
+            const endDateTime = `${params.endDate}T23:59:59`;
 
             const selectedGenres = (params.genres && params.genres.length > 0) ? params.genres.split(',') : [];
             const genreIdQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';

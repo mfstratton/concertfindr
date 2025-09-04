@@ -52,7 +52,6 @@ interface MapboxSuggestion {
 const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
-// --- FIX: Simplified theme to correct the header layout ---
 const calendarTheme = {
     backgroundColor: '#ffffff',
     calendarBackground: '#f9f9f9',
@@ -64,12 +63,17 @@ const calendarTheme = {
     textDisabledColor: '#d9e1e8',
     arrowColor: '#007AFF',
     monthTextColor: '#2d4150',
-    textDayFontWeight: '300',
-    textMonthFontWeight: 'bold',
-    textDayHeaderFontWeight: '300',
-    textDayFontSize: 16,
-    textMonthFontSize: 18,
-    textDayHeaderFontSize: 14,
+    'stylesheet.calendar.header': {
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            paddingLeft: 10,
+            paddingRight: 10,
+            alignItems: 'center',
+            backgroundColor: '#f0f0f0',
+            paddingVertical: 5,
+        }
+    }
 };
 
 
@@ -93,7 +97,6 @@ export default function SearchInputScreen() {
     const [isCalendarVisible, setCalendarVisible] = useState(false);
     const [datePickerType, setDatePickerType] = useState<'start' | 'end'>('start');
     const [tempDate, setTempDate] = useState<Date | null>(null);
-    const [visibleMonth, setVisibleMonth] = useState(new Date());
 
     const interactionStarted = useRef(false);
     const isInitialGenreLoadDone = useRef(false);
@@ -218,7 +221,6 @@ export default function SearchInputScreen() {
         setDatePickerType(type);
         const initialDate = type === 'start' ? startDate : endDate;
         setTempDate(initialDate);
-        setVisibleMonth(initialDate || new Date());
         setCalendarVisible(true);
     };
 
@@ -298,8 +300,6 @@ export default function SearchInputScreen() {
     if (!appIsReady) return null;
 
     const initialCalendarDate = datePickerType === 'end' ? (endDate || startDate) : (startDate);
-    const today = new Date();
-    const isCurrentMonth = visibleMonth.getMonth() === today.getMonth() && visibleMonth.getFullYear() === today.getFullYear();
 
     return (
          <KeyboardAvoidingView
@@ -361,11 +361,9 @@ export default function SearchInputScreen() {
                         theme={calendarTheme}
                         onDayPress={onDayPress}
                         markedDates={getMarkedDates()}
-                        minDate={toLocalDateString(new Date())}
+                        minDate={datePickerType === 'end' ? toLocalDateString(startDate!) : toLocalDateString(new Date())}
                         current={toLocalDateString(initialCalendarDate!)}
-                        onMonthChange={(month) => setVisibleMonth(new Date(month.dateString))}
                         hideExtraDays={true}
-                        disableArrowLeft={datePickerType === 'start' && isCurrentMonth}
                     />
                     <View style={styles.calendarButtons}>
                         <TouchableOpacity onPress={() => setCalendarVisible(false)} style={styles.calendarButton}>

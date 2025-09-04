@@ -130,9 +130,9 @@ export default function ResultsScreen() {
             const radius = params.radius;
             const unit = "miles";
 
-            // --- FIX: Remove 'Z' to search by local time, not UTC ---
-            const startDateTime = `${params.startDate}T00:00:00`;
-            const endDateTime = `${params.endDate}T23:59:59`;
+            // Use the required YYYY-MM-DDTHH:mm:ssZ format
+            const startDateTime = `${params.startDate}T00:00:00Z`;
+            const endDateTime = `${params.endDate}T23:59:59Z`;
 
             const selectedGenres = (params.genres && params.genres.length > 0) ? params.genres.split(',') : [];
             const genreIdQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';
@@ -158,6 +158,7 @@ export default function ResultsScreen() {
 
             const activeEvents = fetchedEvents.filter(event => event.dates?.status?.code !== 'cancelled');
 
+            // Final safety filter to ensure dates match the user's local selection
             const filteredEventsByDate = activeEvents.filter(event => {
                 const eventLocalDate = event.dates?.start?.localDate;
                 return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;

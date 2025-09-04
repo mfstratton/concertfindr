@@ -52,7 +52,7 @@ interface MapboxSuggestion {
 const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
-// --- FIX: Updated theme for better visibility ---
+// --- FIX: Simplified theme to correct the header layout ---
 const calendarTheme = {
     backgroundColor: '#ffffff',
     calendarBackground: '#f9f9f9',
@@ -62,25 +62,14 @@ const calendarTheme = {
     todayTextColor: '#007AFF',
     dayTextColor: '#2d4150',
     textDisabledColor: '#d9e1e8',
-    dotColor: '#007AFF',
-    selectedDotColor: '#ffffff',
     arrowColor: '#007AFF',
     monthTextColor: '#2d4150',
-    indicatorColor: 'blue',
     textDayFontWeight: '300',
     textMonthFontWeight: 'bold',
     textDayHeaderFontWeight: '300',
     textDayFontSize: 16,
     textMonthFontSize: 18,
     textDayHeaderFontSize: 14,
-    'stylesheet.calendar.header': {
-        header: {
-            backgroundColor: '#f0f0f0',
-            paddingVertical: 10,
-            borderTopLeftRadius: 10,
-            borderTopRightRadius: 10,
-        }
-    }
 };
 
 
@@ -455,6 +444,10 @@ const styles = StyleSheet.create({
     noSuggestionText: { padding: 12, fontStyle: 'italic', color: '#888' },
     dateButton: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, width: '100%', backgroundColor: '#f9f9f9', justifyContent: 'center', alignItems: 'flex-start' },
     dateButtonText: { fontSize: 16, color: '#333' },
+    disabledDateButton: {
+        backgroundColor: '#f0f0f0',
+        borderColor: '#e0e0e0',
+    },
     advancedSearchToggle: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, },
     advancedSearchText: { fontSize: 16, color: '#007AFF', marginRight: 5, },
     advancedSearchContainer: { width: '100%', padding: 10, backgroundColor: '#f9f9f9', borderRadius: 8, marginBottom: 15, },

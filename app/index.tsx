@@ -361,7 +361,7 @@ export default function SearchInputScreen() {
                         theme={calendarTheme}
                         onDayPress={onDayPress}
                         markedDates={getMarkedDates()}
-                        minDate={datePickerType === 'end' ? toLocalDateString(startDate!) : toLocalDateString(new Date())}
+                        minDate={toLocalDateString(datePickerType === 'end' ? startDate! : new Date())}
                         current={toLocalDateString(initialCalendarDate!)}
                         hideExtraDays={true}
                     />
@@ -395,7 +395,6 @@ const styles = StyleSheet.create({
     calendarSafeArea: {
         flex: 1,
         backgroundColor: 'white',
-        justifyContent: 'center',
     },
     calendarButtons: {
         flexDirection: 'row',

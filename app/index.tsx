@@ -230,13 +230,17 @@ export default function SearchInputScreen() {
     };
 
     const handleDone = () => {
+        if (!tempDate) {
+            setCalendarVisible(false);
+            return;
+        }
         if (datePickerType === 'start') {
             setStartDate(tempDate);
-            if (endDate && tempDate && tempDate > endDate) {
+            if (endDate && tempDate > endDate) {
                 setEndDate(tempDate);
             }
         } else {
-             if (startDate && tempDate && tempDate < startDate) {
+             if (startDate && tempDate < startDate) {
                 Alert.alert("Invalid Range", "End date cannot be before start date.");
             } else {
                 setEndDate(tempDate);
@@ -461,6 +465,7 @@ const styles = StyleSheet.create({
     customButton: { backgroundColor: '#007AFF', paddingVertical: 12, paddingHorizontal: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
     customButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', },
     disabledButton: { backgroundColor: '#A9A9A9', },
+    // --- FIX: Corrected attributionContainer style ---
     attributionContainer: {
         width: '100%',
         alignItems: 'center',

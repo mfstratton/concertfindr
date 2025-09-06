@@ -130,7 +130,7 @@ export default function ResultsScreen() {
             const radius = params.radius;
             const unit = "miles";
 
-            // --- FIX: Remove the 'Z' to search by the venue's local time ---
+            // --- FIX: Remove 'Z' to search by the venue's local time, not UTC ---
             const startDateTime = `${params.startDate}T00:00:00`;
             const endDateTime = `${params.endDate}T23:59:59`;
 
@@ -158,12 +158,7 @@ export default function ResultsScreen() {
 
             const activeEvents = fetchedEvents.filter(event => event.dates?.status?.code !== 'cancelled');
 
-            // This client-side filter is a good safety check
-            const filteredEventsByDate = activeEvents.filter(event => {
-                const eventLocalDate = event.dates?.start?.localDate;
-                return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;
-            });
-            setConcerts(filteredEventsByDate);
+            setConcerts(activeEvents);
 
         } catch (err: any) {
             console.error("Error fetching concerts:", err.message);
@@ -175,23 +170,7 @@ export default function ResultsScreen() {
 
     const getGenreIds = (genres: string[]): string => {
         const genreMap: { [key: string]: string } = {
-            "Alternative": "KnvZfZ7vAvv",
-            "Blues": "KnvZfZ7vAvd",
-            "Classical": "KnvZfZ7vAeJ",
-            "Country": "KnvZfZ7vAv6",
-            "Dance/Electronic": "KnvZfZ7vAvF",
-            "Folk": "KnvZfZ7vAva",
-            "Hip-Hop/Rap": "KnvZfZ7vAvJ",
-            "Jazz": "KnvZfZ7vAvE",
-            "Latin": "KnvZfZ7vAFe",
-            "Metal": "KnvZfZ7vAvt",
-            "New Age": "KnvZfZ7vAee",
-            "Pop": "KnvZfZ7vAev",
-            "R&B": "KnvZfZ7vA_e",
-            "Reggae": "KnvZfZ7vAed",
-            "Religious": "KnvZfZ7vAAd",
-            "Rock": "KnvZfZ7vAeA",
-            "World": "KnvZfZ7vAFr"
+            "Alternative": "KnvZfZ7vAvv", "Blues": "KnvZfZ7vAvd", "Classical": "KnvZfZ7vAeJ", "Country": "KnvZfZ7vAv6", "Dance/Electronic": "KnvZfZ7vAvF", "Folk": "KnvZfZ7vAva", "Hip-Hop/Rap": "KnvZfZ7vAvJ", "Jazz": "KnvZfZ7vAvE", "Latin": "KnvZfZ7vAFe", "Metal": "KnvZfZ7vAvt", "New Age": "KnvZfZ7vAee", "Pop": "KnvZfZ7vAev", "R&B": "KnvZfZ7vA_e", "Reggae": "KnvZfZ7vAed", "Religious": "KnvZfZ7vAAd", "Rock": "KnvZfZ7vAeA", "World": "KnvZfZ7vAFr"
         };
         return genres.map(genre => genreMap[genre]).filter(id => id).join(',');
     };
@@ -242,76 +221,18 @@ export default function ResultsScreen() {
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    container: {
-        flex: 1,
-        paddingHorizontal: 15,
-        paddingTop: 10,
-    },
-    searchRecapContainer: {
-        paddingVertical: 10,
-        paddingHorizontal: 5,
-        marginBottom: 10,
-        backgroundColor: '#f0f0f0',
-        borderRadius: 8,
-        alignItems: 'center',
-    },
-    searchRecapText: {
-        fontSize: 15,
-        color: '#333',
-        textAlign: 'center',
-    },
-    searchRecapValue: {
-        fontWeight: 'bold',
-    },
-    modifyButtonContainer: {
-        marginBottom: 15,
-        alignItems: 'center',
-    },
-    loader: {
-        marginTop: 50,
-    },
-    errorText: {
-        marginTop: 20,
-        color: '#D32F2F',
-        textAlign: 'center',
-        fontSize: 16,
-        paddingHorizontal: 10,
-    },
-    noResultsText: {
-        marginTop: 40,
-        color: '#888',
-        fontStyle: 'italic',
-        textAlign: 'center',
-        fontSize: 16,
-    },
-    listContentContainer: {
-        paddingBottom: 20,
-    },
-    concertItem: {
-        paddingVertical: 12,
-        paddingHorizontal: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        backgroundColor: '#fdfdfd',
-        marginBottom: 5,
-        borderRadius: 4,
-    },
-    concertName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 4,
-    },
-    concertDate: {
-        fontSize: 14,
-        color: '#555',
-        marginBottom: 2,
-    },
-    concertVenue: {
-        fontSize: 14,
-        color: '#777',
-    },
+    safeArea: { flex: 1, backgroundColor: '#FFFFFF', },
+    container: { flex: 1, paddingHorizontal: 15, paddingTop: 10, },
+    searchRecapContainer: { paddingVertical: 10, paddingHorizontal: 5, marginBottom: 10, backgroundColor: '#f0f0f0', borderRadius: 8, alignItems: 'center', },
+    searchRecapText: { fontSize: 15, color: '#333', textAlign: 'center', },
+    searchRecapValue: { fontWeight: 'bold', },
+    modifyButtonContainer: { marginBottom: 15, alignItems: 'center', },
+    loader: { marginTop: 50, },
+    errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
+    noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },
+    listContentContainer: { paddingBottom: 20, },
+    concertItem: { paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: '#e0e0e0', backgroundColor: '#fdfdfd', marginBottom: 5, borderRadius: 4, },
+    concertName: { fontSize: 16, fontWeight: 'bold', marginBottom: 4, },
+    concertDate: { fontSize: 14, color: '#555', marginBottom: 2, },
+    concertVenue: { fontSize: 14, color: '#777', },
 });

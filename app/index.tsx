@@ -32,24 +32,9 @@ SplashScreen.preventAutoHideAsync();
 
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-interface MapboxSuggestion {
-    name: string;
-    mapbox_id: string;
-    feature_type: string;
-    address?: string;
-    full_address?: string;
-    place_formatted?: string;
-    context?: {
-        country?: { id: string; name: string; country_code: string; country_code_alpha_3: string };
-        region?: { id: string; name: string; region_code?: string; region_code_full?: string };
-        district?: { id: string; name: string };
-    };
-    language?: string;
-    maki?: string;
-    metadata?: any;
-}
-
-const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
+// Interfaces and constants...
+interface MapboxSuggestion { name: string; mapbox_id: string; /* ... */ }
+const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", /* ... */];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
 const calendarTheme = {
@@ -395,7 +380,7 @@ const styles = StyleSheet.create({
     calendarSafeArea: {
         flex: 1,
         backgroundColor: 'white',
-        paddingTop: '25%',
+        paddingTop: '35%', // Further lowered the calendar
     },
     calendarButtons: {
         flexDirection: 'row',

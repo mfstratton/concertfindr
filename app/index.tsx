@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
     calendarSafeArea: {
         flex: 1,
         backgroundColor: 'white',
-        paddingTop: '25%', // Increased padding to lower the calendar
+        paddingTop: '25%',
     },
     calendarButtons: {
         flexDirection: 'row',

@@ -130,9 +130,9 @@ export default function ResultsScreen() {
             const radius = params.radius;
             const unit = "miles";
 
-            // Use the required YYYY-MM-DDTHH:mm:ssZ format
-            const startDateTime = `${params.startDate}T00:00:00Z`;
-            const endDateTime = `${params.endDate}T23:59:59Z`;
+            // --- FIX: Remove the 'Z' to search by the venue's local time ---
+            const startDateTime = `${params.startDate}T00:00:00`;
+            const endDateTime = `${params.endDate}T23:59:59`;
 
             const selectedGenres = (params.genres && params.genres.length > 0) ? params.genres.split(',') : [];
             const genreIdQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';
@@ -158,7 +158,7 @@ export default function ResultsScreen() {
 
             const activeEvents = fetchedEvents.filter(event => event.dates?.status?.code !== 'cancelled');
 
-            // Final safety filter to ensure dates match the user's local selection
+            // This client-side filter is a good safety check
             const filteredEventsByDate = activeEvents.filter(event => {
                 const eventLocalDate = event.dates?.start?.localDate;
                 return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;

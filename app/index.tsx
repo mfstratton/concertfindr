@@ -32,9 +32,24 @@ SplashScreen.preventAutoHideAsync();
 
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-// Interfaces and constants...
-interface MapboxSuggestion { name: string; mapbox_id: string; /* ... */ }
-const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", /* ... */];
+interface MapboxSuggestion {
+    name: string;
+    mapbox_id: string;
+    feature_type: string;
+    address?: string;
+    full_address?: string;
+    place_formatted?: string;
+    context?: {
+        country?: { id: string; name: string; country_code: string; country_code_alpha_3: string };
+        region?: { id: string; name: string; region_code?: string; region_code_full?: string };
+        district?: { id: string; name: string };
+    };
+    language?: string;
+    maki?: string;
+    metadata?: any;
+}
+
+const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
 const calendarTheme = {
@@ -324,7 +339,21 @@ export default function SearchInputScreen() {
                         <Text style={styles.advancedSearchText}>Advanced Search</Text>
                         <Ionicons name={isAdvancedSearchVisible ? "chevron-up" : "chevron-down"} size={20} color="#007AFF" />
                     </TouchableOpacity>
-                    {isAdvancedSearchVisible && ( <View style={styles.advancedSearchContainer}> <Text style={styles.advancedLabel}>Search Radius (miles)</Text> <View style={styles.radiusOptionsContainer}> {RADIUS_OPTIONS.map(radius => ( <TouchableOpacity key={radius} style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]} onPress={() => setSelectedRadius(radius)}> <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text> </TouchableOpacity> ))} </View> <Text style={styles.advancedLabel}>Genre</Text> <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}> <Text style={styles.genreButtonText}>{selectedGenres.length === GENRE_OPTIONS.length || selectedGenres.length === 0 ? 'All Genres' : selectedGenres.join(', ')}</Text> </TouchableOpacity> </View> )}
+                    {isAdvancedSearchVisible && (
+                        <View style={styles.advancedSearchContainer}>
+                            <Text style={styles.advancedLabel}>Search Radius (miles)</Text>
+                            <View style={styles.radiusOptionsContainer}>
+                                {RADIUS_OPTIONS.map(radius => ( <TouchableOpacity key={radius} style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]} onPress={() => setSelectedRadius(radius)}> <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text> </TouchableOpacity> ))}
+                            </View>
+                            <Text style={styles.advancedLabel}>Genre</Text>
+                            <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}>
+                                {/* --- FIX: Restored original text logic --- */}
+                                <Text style={styles.genreButtonText}>
+                                    {selectedGenres.length === GENRE_OPTIONS.length || selectedGenres.length === 0 ? 'All Genres' : selectedGenres.join(', ')}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                     <View style={styles.buttonContainer}>
                         {Platform.OS === 'ios' ? ( <TouchableOpacity style={[styles.customButton, (!selectedMapboxId || !startDate || !endDate) && styles.disabledButton]} onPress={handleNavigateToResults} disabled={!selectedMapboxId || !startDate || !endDate}> <Text style={styles.customButtonText}>Search Concerts</Text> </TouchableOpacity> ) : ( <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} /> )}
                     </View>
@@ -380,7 +409,7 @@ const styles = StyleSheet.create({
     calendarSafeArea: {
         flex: 1,
         backgroundColor: 'white',
-        paddingTop: '35%', // Further lowered the calendar
+        paddingTop: '25%',
     },
     calendarButtons: {
         flexDirection: 'row',

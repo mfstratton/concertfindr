@@ -7,6 +7,7 @@ import {
     FlatList,
     ActivityIndicator,
     TouchableOpacity,
+    Linking,
     SafeAreaView,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';

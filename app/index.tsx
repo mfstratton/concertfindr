@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, 'useState', useEffect, useCallback, useRef } from 'react';
 import {
     StyleSheet,
     View,
@@ -339,21 +339,7 @@ export default function SearchInputScreen() {
                         <Text style={styles.advancedSearchText}>Advanced Search</Text>
                         <Ionicons name={isAdvancedSearchVisible ? "chevron-up" : "chevron-down"} size={20} color="#007AFF" />
                     </TouchableOpacity>
-                    {isAdvancedSearchVisible && (
-                        <View style={styles.advancedSearchContainer}>
-                            <Text style={styles.advancedLabel}>Search Radius (miles)</Text>
-                            <View style={styles.radiusOptionsContainer}>
-                                {RADIUS_OPTIONS.map(radius => ( <TouchableOpacity key={radius} style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]} onPress={() => setSelectedRadius(radius)}> <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text> </TouchableOpacity> ))}
-                            </View>
-                            <Text style={styles.advancedLabel}>Genre</Text>
-                            <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}>
-                                {/* --- FIX: Restored original text logic --- */}
-                                <Text style={styles.genreButtonText}>
-                                    {selectedGenres.length === GENRE_OPTIONS.length || selectedGenres.length === 0 ? 'All Genres' : selectedGenres.join(', ')}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                    {isAdvancedSearchVisible && ( <View style={styles.advancedSearchContainer}> <Text style={styles.advancedLabel}>Search Radius (miles)</Text> <View style={styles.radiusOptionsContainer}> {RADIUS_OPTIONS.map(radius => ( <TouchableOpacity key={radius} style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]} onPress={() => setSelectedRadius(radius)}> <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text> </TouchableOpacity> ))} </View> <Text style={styles.advancedLabel}>Genre</Text> <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}> <Text style={styles.genreButtonText}>{selectedGenres.length === GENRE_OPTIONS.length || selectedGenres.length === 0 ? 'All Genres' : selectedGenres.join(', ')}</Text> </TouchableOpacity> </View> )}
                     <View style={styles.buttonContainer}>
                         {Platform.OS === 'ios' ? ( <TouchableOpacity style={[styles.customButton, (!selectedMapboxId || !startDate || !endDate) && styles.disabledButton]} onPress={handleNavigateToResults} disabled={!selectedMapboxId || !startDate || !endDate}> <Text style={styles.customButtonText}>Search Concerts</Text> </TouchableOpacity> ) : ( <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} /> )}
                     </View>
@@ -409,7 +395,7 @@ const styles = StyleSheet.create({
     calendarSafeArea: {
         flex: 1,
         backgroundColor: 'white',
-        paddingTop: '25%',
+        paddingTop: 200,
     },
     calendarButtons: {
         flexDirection: 'row',

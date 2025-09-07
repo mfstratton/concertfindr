@@ -230,13 +230,17 @@ export default function SearchInputScreen() {
     };
 
     const handleDone = () => {
+        if (!tempDate) {
+            setCalendarVisible(false);
+            return;
+        }
         if (datePickerType === 'start') {
             setStartDate(tempDate);
-            if (endDate && tempDate && tempDate > endDate) {
+            if (endDate && tempDate > endDate) {
                 setEndDate(tempDate);
             }
         } else {
-             if (startDate && tempDate && tempDate < startDate) {
+             if (startDate && tempDate < startDate) {
                 Alert.alert("Invalid Range", "End date cannot be before start date.");
             } else {
                 setEndDate(tempDate);

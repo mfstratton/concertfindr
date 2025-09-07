@@ -230,20 +230,23 @@ export default function SearchInputScreen() {
     };
 
     const handleDone = () => {
-        if (!tempDate) {
+        // Corrected logic to ensure tempDate is not null
+        const dateToSet = tempDate;
+        if (!dateToSet) {
             setCalendarVisible(false);
             return;
         }
+
         if (datePickerType === 'start') {
-            setStartDate(tempDate);
-            if (endDate && tempDate > endDate) {
-                setEndDate(tempDate);
+            setStartDate(dateToSet);
+            if (endDate && dateToSet > endDate) {
+                setEndDate(dateToSet);
             }
-        } else {
-             if (startDate && tempDate < startDate) {
+        } else { // 'end'
+             if (startDate && dateToSet < startDate) {
                 Alert.alert("Invalid Range", "End date cannot be before start date.");
             } else {
-                setEndDate(tempDate);
+                setEndDate(dateToSet);
             }
         }
         setCalendarVisible(false);
@@ -465,7 +468,6 @@ const styles = StyleSheet.create({
     customButton: { backgroundColor: '#007AFF', paddingVertical: 12, paddingHorizontal: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', },
     customButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', },
     disabledButton: { backgroundColor: '#A9A9A9', },
-    // --- FIX: Corrected attributionContainer style ---
     attributionContainer: {
         width: '100%',
         alignItems: 'center',

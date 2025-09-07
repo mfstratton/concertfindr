@@ -10,7 +10,6 @@ import {
     Linking,
     SafeAreaView,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
@@ -131,8 +130,8 @@ export default function ResultsScreen() {
             const radius = params.radius;
             const unit = "miles";
 
-            const startDateTime = `${params.startDate}T00:00:00`;
-            const endDateTime = `${params.endDate}T23:59:59`;
+            const startDateTime = `${params.startDate}T00:00:00Z`;
+            const endDateTime = `${params.endDate}T23:59:59Z`;
 
             const selectedGenres = (params.genres && params.genres.length > 0) ? params.genres.split(',') : [];
             const genreIdQuery = selectedGenres.length > 0 ? `&genreId=${getGenreIds(selectedGenres)}` : '';
@@ -158,7 +157,11 @@ export default function ResultsScreen() {
 
             const activeEvents = fetchedEvents.filter(event => event.dates?.status?.code !== 'cancelled');
 
-            setConcerts(activeEvents);
+            const filteredEventsByDate = activeEvents.filter(event => {
+                const eventLocalDate = event.dates?.start?.localDate;
+                return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;
+            });
+            setConcerts(filteredEventsByDate);
 
         } catch (err: any) {
             console.error("Error fetching concerts:", err.message);
@@ -180,7 +183,7 @@ export default function ResultsScreen() {
         const cityName = item._embedded?.venues?.[0]?.city?.name || 'City TBD';
 
         return (
-            <TouchableOpacity style={styles.concertItem} onPress={() => item.url && WebBrowser.openBrowserAsync(item.url)}>
+            <TouchableOpacity style={styles.concertItem} onPress={() => item.url && Linking.openURL(item.url)}>
                 <Text style={styles.concertName}>{item.name || 'Event Name Not Available'}</Text>
                 <Text style={styles.concertDate}>{item.dates?.start?.localDate} {formatTimeAmPm(item.dates?.start?.localTime)}</Text>
                 <Text style={styles.concertVenue}>{venueName} ({cityName})</Text>

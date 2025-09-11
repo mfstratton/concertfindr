@@ -7,12 +7,11 @@ import {
     FlatList,
     ActivityIndicator,
     TouchableOpacity,
-    Linking,
     SafeAreaView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import 'react-native-get-random-values';
-import { v4 as uuidv4 } from 'uuid';
+import * as WebBrowser from 'expo-web-browser';
 
 
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -130,7 +129,6 @@ export default function ResultsScreen() {
             const radius = params.radius;
             const unit = "miles";
 
-            // This is the "Wide Net" logic
             const startDateTime = `${params.startDate}T00:00:00Z`;
             const endDateObj = new Date(params.endDate + 'T00:00:00Z');
             endDateObj.setDate(endDateObj.getDate() + 1);
@@ -141,7 +139,6 @@ export default function ResultsScreen() {
 
             const ticketmasterApiUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketmasterApiKey}&latlong=${lat},${lng}&radius=${radius}&unit=${unit}&startDateTime=${startDateTime}&endDateTime=${endDateTime}&sort=date,asc&classificationName=Music&size=200${genreIdQuery}`;
 
-            console.log("Requesting Ticketmaster URL:", ticketmasterApiUrl);
             const tmResponse = await fetch(ticketmasterApiUrl);
             if (!tmResponse.ok) {
                 let errorMsg = `Ticketmaster API error! Status: ${tmResponse.status}`;
@@ -160,7 +157,6 @@ export default function ResultsScreen() {
 
             const activeEvents = fetchedEvents.filter(event => event.dates?.status?.code !== 'cancelled');
 
-            // This is the crucial on-device "Safety Filter"
             const filteredEventsByDate = activeEvents.filter(event => {
                 const eventLocalDate = event.dates?.start?.localDate;
                 return eventLocalDate && eventLocalDate >= params.startDate! && eventLocalDate <= params.endDate!;
@@ -185,7 +181,7 @@ export default function ResultsScreen() {
         const cityName = item._embedded?.venues?.[0]?.city?.name || 'City TBD';
 
         return (
-            <TouchableOpacity style={styles.concertItem} onPress={() => item.url && Linking.openURL(item.url)}>
+            <TouchableOpacity style={styles.concertItem} onPress={() => item.url && WebBrowser.openBrowserAsync(item.url)}>
                 <Text style={styles.concertName}>{item.name || 'Event Name Not Available'}</Text>
                 <Text style={styles.concertDate}>{item.dates?.start?.localDate} {formatTimeAmPm(item.dates?.start?.localTime)}</Text>
                 <Text style={styles.concertVenue}>{venueName} ({cityName})</Text>

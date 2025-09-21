@@ -311,48 +311,83 @@ export default function SearchInputScreen() {
             style={styles.keyboardAvoidingContainer}
             onLayout={onLayoutRootView}
         >
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollViewContent}
-                keyboardShouldPersistTaps="handled"
-            >
-                <View style={styles.container}>
-                    <View style={styles.headerContainer}>
-                        <Image source={require('../assets/images/icon.png')} style={styles.logo} />
-                        <Text style={styles.appNameTitle}>ConcertFindr™</Text>
-                    </View>
-                    <Text style={styles.tagline}>All you need is a city and a date.</Text>
-                    <View style={styles.inputContainer}>
-                        <TextInput style={styles.input} placeholder="Enter City (e.g., Chicago)" placeholderTextColor="#8e8e93" value={city} onChangeText={handleCityChange} autoCapitalize="words" onFocus={() => { if (!interactionStarted.current) { interactionStarted.current = true; if (!sessionToken) setSessionToken(uuidv4()); } if (selectedMapboxId) setShowSuggestions(false); }} />
-                        {city.length > 0 && ( <TouchableOpacity onPress={handleClearCity} style={styles.clearIconTouchable}> <Ionicons name="close-circle" size={22} color="#888" /> </TouchableOpacity> )}
-                        {isCityLoading && city.length > 2 && ( <ActivityIndicator size="small" color="#6200EE" style={styles.cityLoadingIndicator} /> )}
-                        {showSuggestions && city.length > 0 && !selectedMapboxId && ( <FlatList style={styles.suggestionsList} data={suggestions} keyExtractor={(item) => item.mapbox_id} renderItem={({ item }) => ( <TouchableOpacity style={styles.suggestionItem} onPress={() => onSuggestionPress(item)}> <Text style={styles.suggestionText}>{formatSuggestionText(item)}</Text> </TouchableOpacity> )} ListEmptyComponent={<Text style={styles.noSuggestionText}>No matching cities found</Text>} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true} /> )}
+            <View style={{ flex: 1, zIndex: 1 }}>
+                <ScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={styles.scrollViewContent}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <View style={styles.container}>
+                        <View style={styles.headerContainer}>
+                            <Image source={require('../assets/images/icon.png')} style={styles.logo} />
+                            <Text style={styles.appNameTitle}>ConcertFindr™</Text>
+                        </View>
+                        <Text style={styles.tagline}>All you need is a city and a date.</Text>
+                        <View style={styles.inputContainer}>
+                            <TextInput style={styles.input} placeholder="Enter City (e.g., Chicago)" placeholderTextColor="#8e8e93" value={city} onChangeText={handleCityChange} autoCapitalize="words" onFocus={() => { if (!interactionStarted.current) { interactionStarted.current = true; if (!sessionToken) setSessionToken(uuidv4()); } if (selectedMapboxId) setShowSuggestions(false); }} />
+                            {city.length > 0 && ( <TouchableOpacity onPress={handleClearCity} style={styles.clearIconTouchable}>
+                                <Ionicons name="close-circle" size={22} color="#888" />
+                            </TouchableOpacity> )}
+                            {isCityLoading && city.length > 2 && ( <ActivityIndicator size="small" color="#6200EE" style={styles.cityLoadingIndicator} /> )}
+                        </View>
+
+                        <TouchableOpacity onPress={() => openCalendar('start')} style={styles.dateButton}>
+                            <Text style={styles.dateButtonText}>Start Date: {formatDate(startDate)}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => openCalendar('end')}
+                            style={styles.dateButton}
+                        >
+                            <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.advancedSearchToggle} onPress={() => setIsAdvancedSearchVisible(!isAdvancedSearchVisible)}>
+                            <Text style={styles.advancedSearchText}>Advanced Search</Text>
+                            <Ionicons name={isAdvancedSearchVisible ? "chevron-up" : "chevron-down"} size={20} color="#007AFF" />
+                        </TouchableOpacity>
+                        {isAdvancedSearchVisible && ( <View style={styles.advancedSearchContainer}>
+                            <Text style={styles.advancedLabel}>Search Radius (miles)</Text>
+                            <View style={styles.radiusOptionsContainer}>
+                                {RADIUS_OPTIONS.map(radius => ( <TouchableOpacity key={radius} style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]} onPress={() => setSelectedRadius(radius)}>
+                                    <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text>
+                                </TouchableOpacity> ))}
+                            </View>
+                            <Text style={styles.advancedLabel}>Genre</Text>
+                            <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}>
+                                <Text style={styles.genreButtonText}>{selectedGenres.length === GENRE_OPTIONS.length || selectedGenres.length === 0 ? 'All Genres' : selectedGenres.join(', ')}</Text>
+                            </TouchableOpacity>
+                        </View> )}
+                        <View style={styles.buttonContainer}>
+                            {Platform.OS === 'ios' ? ( <TouchableOpacity style={[styles.customButton, (!selectedMapboxId || !startDate || !endDate) && styles.disabledButton]} onPress={handleNavigateToResults} disabled={!selectedMapboxId || !startDate || !endDate}>
+                                <Text style={styles.customButtonText}>Search Concerts</Text>
+                            </TouchableOpacity> ) : ( <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} /> )}
+                        </View>
                     </View>
 
-                    <TouchableOpacity onPress={() => openCalendar('start')} style={styles.dateButton}>
-                        <Text style={styles.dateButtonText}>Start Date: {formatDate(startDate)}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => openCalendar('end')}
-                        style={styles.dateButton}
-                    >
-                        <Text style={styles.dateButtonText}>End Date: {formatDate(endDate)}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.advancedSearchToggle} onPress={() => setIsAdvancedSearchVisible(!isAdvancedSearchVisible)}>
-                        <Text style={styles.advancedSearchText}>Advanced Search</Text>
-                        <Ionicons name={isAdvancedSearchVisible ? "chevron-up" : "chevron-down"} size={20} color="#007AFF" />
-                    </TouchableOpacity>
-                    {isAdvancedSearchVisible && ( <View style={styles.advancedSearchContainer}> <Text style={styles.advancedLabel}>Search Radius (miles)</Text> <View style={styles.radiusOptionsContainer}> {RADIUS_OPTIONS.map(radius => ( <TouchableOpacity key={radius} style={[styles.radiusButton, selectedRadius === radius && styles.radiusButtonSelected]} onPress={() => setSelectedRadius(radius)}> <Text style={[styles.radiusText, selectedRadius === radius && styles.radiusTextSelected]}>{radius}</Text> </TouchableOpacity> ))} </View> <Text style={styles.advancedLabel}>Genre</Text> <TouchableOpacity style={styles.genreButton} onPress={() => setIsGenreModalVisible(true)}> <Text style={styles.genreButtonText}>{selectedGenres.length === GENRE_OPTIONS.length || selectedGenres.length === 0 ? 'All Genres' : selectedGenres.join(', ')}</Text> </TouchableOpacity> </View> )}
-                    <View style={styles.buttonContainer}>
-                        {Platform.OS === 'ios' ? ( <TouchableOpacity style={[styles.customButton, (!selectedMapboxId || !startDate || !endDate) && styles.disabledButton]} onPress={handleNavigateToResults} disabled={!selectedMapboxId || !startDate || !endDate}> <Text style={styles.customButtonText}>Search Concerts</Text> </TouchableOpacity> ) : ( <Button title="Search Concerts" onPress={handleNavigateToResults} color="#007AFF" disabled={!selectedMapboxId || !startDate || !endDate} /> )}
+                    <View style={styles.attributionContainer}>
+                        <Text style={styles.poweredByText}>
+                            © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text>
+                            {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text>
+                            {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text>
+                        </Text>
                     </View>
-                </View>
+                </ScrollView>
 
-                <View style={styles.attributionContainer}>
-                    <Text style={styles.poweredByText}> © <Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/about/maps/')}>Mapbox</Text> {' '}© <Text style={styles.linkText} onPress={() => Linking.openURL('http://www.openstreetmap.org/copyright')}>OpenStreetMap</Text> {' '}<Text style={styles.linkText} onPress={() => Linking.openURL('https://www.mapbox.com/map-feedback/')}>Improve this map</Text> </Text>
-                </View>
-            </ScrollView>
+                {showSuggestions && city.length > 0 && !selectedMapboxId && (
+                    <FlatList
+                        style={styles.suggestionsList}
+                        data={suggestions}
+                        keyExtractor={(item) => item.mapbox_id}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity style={styles.suggestionItem} onPress={() => onSuggestionPress(item)}>
+                                <Text style={styles.suggestionText}>{formatSuggestionText(item)}</Text>
+                            </TouchableOpacity>
+                        )}
+                        ListEmptyComponent={<Text style={styles.noSuggestionText}>No matching cities found</Text>}
+                        keyboardShouldPersistTaps="handled"
+                    />
+                )}
+            </View>
 
             <Modal
                 animationType="slide"
@@ -365,8 +400,8 @@ export default function SearchInputScreen() {
                         theme={calendarTheme}
                         onDayPress={onDayPress}
                         markedDates={getMarkedDates()}
-                        minDate={toLocalDateString(datePickerType === 'end' ? startDate! : new Date())}
-                        current={toLocalDateString(initialCalendarDate!)}
+                        minDate={toLocalDateString(datePickerType === 'end' ? startDate : new Date())}
+                        current={toLocalDateString(initialCalendarDate)}
                         hideExtraDays={true}
                     />
                     <View style={styles.calendarButtons}>
@@ -384,7 +419,10 @@ export default function SearchInputScreen() {
                 <View style={styles.modalContainer}>
                     <View style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFFFFF' }]}>
                         <Text style={[styles.modalTitle, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>Select Genres</Text>
-                        <FlatList data={['All Genres', ...GENRE_OPTIONS]} keyExtractor={item => item} renderItem={({ item }) => { const isSelected = item === 'All Genres' ? selectedGenres.length === GENRE_OPTIONS.length : selectedGenres.includes(item); return ( <TouchableOpacity style={styles.genreItem} onPress={() => handleGenreSelect(item)}> <Ionicons name={isSelected ? "checkbox" : "square-outline"} size={24} color="#007AFF" /> <Text style={[styles.genreText, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>{item}</Text> </TouchableOpacity> ); }} numColumns={2} />
+                        <FlatList data={['All Genres', ...GENRE_OPTIONS]} keyExtractor={item => item} renderItem={({ item }) => { const isSelected = item === 'All Genres' ? selectedGenres.length === GENRE_OPTIONS.length : selectedGenres.includes(item); return ( <TouchableOpacity style={styles.genreItem} onPress={() => handleGenreSelect(item)}>
+                            <Ionicons name={isSelected ? "checkbox" : "square-outline"} size={24} color="#007AFF" />
+                            <Text style={[styles.genreText, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>{item}</Text>
+                        </TouchableOpacity> ); }} numColumns={2} />
                         <View style={styles.modalButtonContainer}>
                             <Button title="Done" onPress={() => setIsGenreModalVisible(false)} />
                         </View>
@@ -421,7 +459,7 @@ const styles = StyleSheet.create({
         color: '#d3d3d3',
     },
     keyboardAvoidingContainer: { flex: 1 },
-    scrollView: { flex: 1, },
+    scrollView: { flex: 1 },
     scrollViewContent: {
         flexGrow: 1,
     },
@@ -436,20 +474,16 @@ const styles = StyleSheet.create({
     logo: { width: 60, height: 60, resizeMode: 'contain', marginBottom: 8, },
     appNameTitle: { fontSize: 32, fontWeight: 'bold', color: '#333333', textAlign: 'center', },
     tagline: { fontSize: 17, color: '#666', textAlign: 'center', marginBottom: 25, fontStyle: 'italic', },
-    inputContainer: { width: '100%', marginBottom: 10, position: 'relative', zIndex: 10 },
+    inputContainer: { width: '100%', marginBottom: 10, position: 'relative' },
     input: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, width: '100%', backgroundColor: '#f9f9f9', fontSize: 16, paddingRight: 45 },
     clearIconTouchable: { position: 'absolute', right: 10, top: 0, height: 50, width: 35, justifyContent: 'center', alignItems: 'center', zIndex: 6 },
     cityLoadingIndicator: { position: 'absolute', right: 10, top: 15, zIndex: 5 },
-    suggestionsList: { position: 'absolute', top: 52, left: 0, right: 0, backgroundColor: 'white', borderWidth: 1, borderColor: '#ccc', borderRadius: 5, maxHeight: 180, zIndex: 20 },
+    suggestionsList: { position: 'absolute', top: 220, left: 20, right: 20, backgroundColor: 'white', borderWidth: 1, borderColor: '#ccc', borderRadius: 5, maxHeight: 180, zIndex: 20 },
     suggestionItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
     suggestionText: { fontSize: 16 },
     noSuggestionText: { padding: 12, fontStyle: 'italic', color: '#888' },
     dateButton: { height: 50, borderColor: '#cccccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, width: '100%', backgroundColor: '#f9f9f9', justifyContent: 'center', alignItems: 'flex-start' },
     dateButtonText: { fontSize: 16, color: '#333' },
-    disabledDateButton: {
-        backgroundColor: '#f0f0f0',
-        borderColor: '#e0e0e0',
-    },
     advancedSearchToggle: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, },
     advancedSearchText: { fontSize: 16, color: '#007AFF', marginRight: 5, },
     advancedSearchContainer: { width: '100%', padding: 10, backgroundColor: '#f9f9f9', borderRadius: 8, marginBottom: 15, },
@@ -472,8 +506,6 @@ const styles = StyleSheet.create({
     },
     poweredByText: { fontSize: 12, color: '#888', textAlign: 'center', },
     linkText: { color: '#007AFF', textDecorationLine: 'underline', },
-    errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
-    noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },
     modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)', },
     modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: -2, }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5, maxHeight: '80%', },
     modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, },

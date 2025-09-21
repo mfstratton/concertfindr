@@ -171,7 +171,7 @@ export default function ResultsScreen() {
         }
     };
 
-    const getGenreIds = (genres: string[]): string => {
+    const getGenreIds = (genres: string[]) => {
         const genreMap: { [key: string]: string } = { "Alternative": "KnvZfZ7vAvv", "Blues": "KnvZfZ7vAvd", "Classical": "KnvZfZ7vAeJ", "Country": "KnvZfZ7vAv6", "Dance/Electronic": "KnvZfZ7vAvF", "Folk": "KnvZfZ7vAva", "Hip-Hop/Rap": "KnvZfZ7vAvJ", "Jazz": "KnvZfZ7vAvE", "Latin": "KnvZfZ7vAFe", "Metal": "KnvZfZ7vAvt", "New Age": "KnvZfZ7vAee", "Pop": "KnvZfZ7vAev", "R&B": "KnvZfZ7vA_e", "Reggae": "KnvZfZ7vAed", "Religious": "KnvZfZ7vAAd", "Rock": "KnvZfZ7vAeA", "World": "KnvZfZ7vAFr" };
         return genres.map(genre => genreMap[genre]).filter(id => id).join(',');
     };
@@ -181,7 +181,7 @@ export default function ResultsScreen() {
         const cityName = item._embedded?.venues?.[0]?.city?.name || 'City TBD';
 
         return (
-            <TouchableOpacity style={styles.concertItem} onPress={() => item.url && WebBrowser.openBrowserAsync(item.url)}>
+            <TouchableOpacity style={styles.concertItem} onPress={() => item.url && WebBrowser.openBrowserAsync(item.url, { createTask: false })}>
                 <Text style={styles.concertName}>{item.name || 'Event Name Not Available'}</Text>
                 <Text style={styles.concertDate}>{item.dates?.start?.localDate} {formatTimeAmPm(item.dates?.start?.localTime)}</Text>
                 <Text style={styles.concertVenue}>{venueName} ({cityName})</Text>

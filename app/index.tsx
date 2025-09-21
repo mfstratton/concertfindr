@@ -32,49 +32,10 @@ SplashScreen.preventAutoHideAsync();
 
 const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-interface MapboxSuggestion {
-    name: string;
-    mapbox_id: string;
-    feature_type: string;
-    address?: string;
-    full_address?: string;
-    place_formatted?: string;
-    context?: {
-        country?: { id: string; name: string; country_code: string; country_code_alpha_3: string };
-        region?: { id: string; name: string; region_code?: string; region_code_full?: string };
-        district?: { id: string; name: string };
-    };
-    language?: string;
-    maki?: string;
-    metadata?: any;
-}
-
+interface MapboxSuggestion { name: string; mapbox_id: string; feature_type: string; address?: string; full_address?: string; place_formatted?: string; context?: { country?: { id: string; name: string; country_code: string; country_code_alpha_3: string }; region?: { id: string; name: string; region_code?: string; region_code_full?: string }; district?: { id: string; name: string }; }; language?: string; maki?: string; metadata?: any; }
 const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
-
-const calendarTheme = {
-    backgroundColor: '#ffffff',
-    calendarBackground: '#f9f9f9',
-    textSectionTitleColor: '#888888',
-    selectedDayBackgroundColor: '#007AFF',
-    selectedDayTextColor: '#ffffff',
-    todayTextColor: '#007AFF',
-    dayTextColor: '#2d4150',
-    textDisabledColor: '#d9e1e8',
-    arrowColor: '#007AFF',
-    monthTextColor: '#2d4150',
-    'stylesheet.calendar.header': {
-        header: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            paddingLeft: 10,
-            paddingRight: 10,
-            alignItems: 'center',
-            backgroundColor: '#f0f0f0',
-            paddingVertical: 5,
-        }
-    }
-};
+const calendarTheme = { backgroundColor: '#ffffff', calendarBackground: '#f9f9f9', textSectionTitleColor: '#888888', selectedDayBackgroundColor: '#007AFF', selectedDayTextColor: '#ffffff', todayTextColor: '#007AFF', dayTextColor: '#2d4150', textDisabledColor: '#d9e1e8', arrowColor: '#007AFF', monthTextColor: '#2d4150', 'stylesheet.calendar.header': { header: { flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 10, paddingRight: 10, alignItems: 'center', backgroundColor: '#f0f0f0', paddingVertical: 5, } } };
 
 
 export default function SearchInputScreen() {
@@ -134,172 +95,20 @@ export default function SearchInputScreen() {
         }
     }, [appIsReady]);
 
-    const formatSuggestionText = (suggestion: MapboxSuggestion | undefined): string => {
-        if (!suggestion) return '';
-        const name = suggestion.name;
-        const regionCode = suggestion.context?.region?.region_code;
-        return regionCode ? `${name}, ${regionCode}` : name;
-    };
-
-    const formatDate = (date: Date | null): string => {
-        if (!date) return 'Select Date';
-        return date.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
-    };
-
-    const toLocalDateString = (date: Date): string => {
-        const offset = date.getTimezoneOffset() * 60000;
-        const localDate = new Date(date.getTime() - offset);
-        return localDate.toISOString().slice(0, 10);
-    };
-
-    const fetchCitySuggestions = async (text: string) => {
-        const currentSessionToken = sessionToken;
-        if (!mapboxAccessToken || !currentSessionToken || text.length <= 2) {
-            setSuggestions([]); setShowSuggestions(false);
-            return;
-        }
-        setIsCityLoading(true);
-        const apiUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(text)}&language=en&limit=5&types=locality,place&country=US&session_token=${currentSessionToken}&access_token=${mapboxAccessToken}`;
-        try {
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error('Mapbox Suggest API Error');
-            const data = await response.json();
-            setSuggestions(data.suggestions || []);
-            setShowSuggestions(true);
-        } catch (error) {
-            console.error("Error fetching city suggestions:", error);
-            setSuggestions([]);
-            setShowSuggestions(false);
-        } finally {
-            setIsCityLoading(false);
-        }
-    };
-
+    const formatSuggestionText = (suggestion: MapboxSuggestion | undefined): string => { if (!suggestion) return ''; const name = suggestion.name; const regionCode = suggestion.context?.region?.region_code; return regionCode ? `${name}, ${regionCode}` : name; };
+    const formatDate = (date: Date | null): string => { if (!date) return 'Select Date'; return date.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }); };
+    const toLocalDateString = (date: Date): string => { const offset = date.getTimezoneOffset() * 60000; const localDate = new Date(date.getTime() - offset); return localDate.toISOString().slice(0, 10); };
+    const fetchCitySuggestions = async (text: string) => { const currentSessionToken = sessionToken; if (!mapboxAccessToken || !currentSessionToken || text.length <= 2) { setSuggestions([]); setShowSuggestions(false); return; } setIsCityLoading(true); const apiUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(text)}&language=en&limit=5&types=locality,place&country=US&session_token=${currentSessionToken}&access_token=${mapboxAccessToken}`; try { const response = await fetch(apiUrl); if (!response.ok) throw new Error('Mapbox Suggest API Error'); const data = await response.json(); setSuggestions(data.suggestions || []); setShowSuggestions(true); } catch (error) { console.error("Error fetching city suggestions:", error); setSuggestions([]); setShowSuggestions(false); } finally { setIsCityLoading(false); } };
     const debouncedFetchSuggestions = useCallback(debounce(fetchCitySuggestions, 300), [mapboxAccessToken, sessionToken]);
-
-    const handleCityChange = (text: string) => {
-        setCity(text);
-        setSelectedMapboxId(null);
-        if (!interactionStarted.current && text.length > 0) {
-            interactionStarted.current = true;
-            if (!sessionToken) setSessionToken(uuidv4());
-        }
-        if (text.length > 2) {
-            setIsCityLoading(true);
-            setShowSuggestions(false);
-            debouncedFetchSuggestions(text);
-        } else {
-            debouncedFetchSuggestions.cancel();
-            setIsCityLoading(false);
-            setSuggestions([]);
-            setShowSuggestions(false);
-        }
-    };
-
-    const onSuggestionPress = (suggestion: MapboxSuggestion) => {
-        setCity(formatSuggestionText(suggestion));
-        setSelectedMapboxId(suggestion.mapbox_id);
-        setSuggestions([]);
-        setShowSuggestions(false);
-        Keyboard.dismiss();
-        interactionStarted.current = false;
-        setSessionToken(uuidv4());
-    };
-
-    const handleClearCity = () => {
-        debouncedFetchSuggestions.cancel();
-        setCity('');
-        setSelectedMapboxId(null);
-        setSuggestions([]);
-        setShowSuggestions(false);
-        setIsCityLoading(false);
-        interactionStarted.current = false;
-        setSessionToken(uuidv4());
-    };
-
-    const openCalendar = (type: 'start' | 'end') => {
-        setDatePickerType(type);
-        const initialDate = type === 'start' ? startDate : endDate;
-        setTempDate(initialDate);
-        setCalendarVisible(true);
-    };
-
-    const onDayPress = (day: DateData) => {
-        const selectedDate = new Date(day.dateString + 'T00:00:00');
-        setTempDate(selectedDate);
-    };
-
-    const handleDone = () => {
-        if (!tempDate) {
-            setCalendarVisible(false);
-            return;
-        }
-        if (datePickerType === 'start') {
-            setStartDate(tempDate);
-            if (endDate && tempDate > endDate) {
-                setEndDate(tempDate);
-            }
-        } else {
-             if (startDate && tempDate < startDate) {
-                Alert.alert("Invalid Range", "End date cannot be before start date.");
-            } else {
-                setEndDate(tempDate);
-            }
-        }
-        setCalendarVisible(false);
-    };
-
-    const getMarkedDates = () => {
-        const marked: { [key: string]: any } = {};
-        if (tempDate) {
-            marked[toLocalDateString(tempDate)] = { selected: true, textColor: 'white' };
-        }
-        return marked;
-    };
-
-    const handleGenreSelect = (genre: string) => {
-        if (genre === 'All Genres') {
-            if (selectedGenres.length === GENRE_OPTIONS.length) {
-                setSelectedGenres([]);
-            } else {
-                setSelectedGenres([...GENRE_OPTIONS]);
-            }
-            return;
-        }
-        setSelectedGenres(prevGenres => {
-            const newGenres = prevGenres.includes(genre)
-                ? prevGenres.filter(g => g !== genre)
-                : [...prevGenres, genre];
-            return newGenres;
-        });
-    };
-
-    const handleNavigateToResults = () => {
-        if (!selectedMapboxId || !startDate || !endDate || !city) {
-            Alert.alert("Validation Error", "Please select a city from suggestions and both dates.");
-            return;
-        }
-        if (!mapboxAccessToken) {
-            Alert.alert("API Key Error", "Mapbox API key not loaded.");
-            return;
-        }
-        let genresToSend = selectedGenres;
-        if (selectedGenres.length === GENRE_OPTIONS.length) {
-            genresToSend = [];
-        }
-        const params = {
-            mapboxId: selectedMapboxId,
-            formattedCityName: city,
-            startDate: toLocalDateString(startDate),
-            endDate: toLocalDateString(endDate),
-            sessionToken: sessionToken || uuidv4(),
-            radius: selectedRadius.toString(),
-            genres: genresToSend.join(','),
-        };
-        router.push({ pathname: "/results", params: params });
-        interactionStarted.current = false;
-        setSessionToken(uuidv4());
-    };
+    const handleCityChange = (text: string) => { setCity(text); setSelectedMapboxId(null); if (!interactionStarted.current && text.length > 0) { interactionStarted.current = true; if (!sessionToken) setSessionToken(uuidv4()); } if (text.length > 2) { setIsCityLoading(true); setShowSuggestions(false); debouncedFetchSuggestions(text); } else { debouncedFetchSuggestions.cancel(); setIsCityLoading(false); setSuggestions([]); setShowSuggestions(false); } };
+    const onSuggestionPress = (suggestion: MapboxSuggestion) => { setCity(formatSuggestionText(suggestion)); setSelectedMapboxId(suggestion.mapbox_id); setSuggestions([]); setShowSuggestions(false); Keyboard.dismiss(); interactionStarted.current = false; setSessionToken(uuidv4()); };
+    const handleClearCity = () => { debouncedFetchSuggestions.cancel(); setCity(''); setSelectedMapboxId(null); setSuggestions([]); setShowSuggestions(false); setIsCityLoading(false); interactionStarted.current = false; setSessionToken(uuidv4()); };
+    const openCalendar = (type: 'start' | 'end') => { setDatePickerType(type); const initialDate = type === 'start' ? startDate : endDate; setTempDate(initialDate); setCalendarVisible(true); };
+    const onDayPress = (day: DateData) => { const selectedDate = new Date(day.dateString + 'T00:00:00'); setTempDate(selectedDate); };
+    const handleDone = () => { if (!tempDate) { setCalendarVisible(false); return; } if (datePickerType === 'start') { setStartDate(tempDate); if (endDate && tempDate > endDate) { setEndDate(tempDate); } } else { if (startDate && tempDate < startDate) { Alert.alert("Invalid Range", "End date cannot be before start date."); } else { setEndDate(tempDate); } } setCalendarVisible(false); };
+    const getMarkedDates = () => { const marked: { [key: string]: any } = {}; if (tempDate) { marked[toLocalDateString(tempDate)] = { selected: true, textColor: 'white' }; } return marked; };
+    const handleGenreSelect = (genre: string) => { if (genre === 'All Genres') { if (selectedGenres.length === GENRE_OPTIONS.length) { setSelectedGenres([]); } else { setSelectedGenres([...GENRE_OPTIONS]); } return; } setSelectedGenres(prevGenres => { const newGenres = prevGenres.includes(genre) ? prevGenres.filter(g => g !== genre) : [...prevGenres, genre]; return newGenres; }); };
+    const handleNavigateToResults = () => { if (!selectedMapboxId || !startDate || !endDate || !city) { Alert.alert("Validation Error", "Please select a city from suggestions and both dates."); return; } if (!mapboxAccessToken) { Alert.alert("API Key Error", "Mapbox API key not loaded."); return; } let genresToSend = selectedGenres; if (selectedGenres.length === GENRE_OPTIONS.length) { genresToSend = []; } const params = { mapboxId: selectedMapboxId, formattedCityName: city, startDate: toLocalDateString(startDate), endDate: toLocalDateString(endDate), sessionToken: sessionToken || uuidv4(), radius: selectedRadius.toString(), genres: genresToSend.join(','), }; router.push({ pathname: "/results", params: params }); interactionStarted.current = false; setSessionToken(uuidv4()); };
 
     if (!appIsReady) return null;
 
@@ -396,21 +205,23 @@ export default function SearchInputScreen() {
                 onRequestClose={() => setCalendarVisible(false)}
             >
                 <SafeAreaView style={styles.calendarSafeArea}>
-                    <Calendar
-                        theme={calendarTheme}
-                        onDayPress={onDayPress}
-                        markedDates={getMarkedDates()}
-                        minDate={toLocalDateString(datePickerType === 'end' ? startDate : new Date())}
-                        current={toLocalDateString(initialCalendarDate)}
-                        hideExtraDays={true}
-                    />
-                    <View style={styles.calendarButtons}>
-                        <TouchableOpacity onPress={() => setCalendarVisible(false)} style={styles.calendarButton}>
-                            <Text style={[styles.calendarButtonText, { color: '#FF3B30' }]}>Cancel</Text>
-                        </TouchableOpacity>
-                         <TouchableOpacity onPress={handleDone} disabled={!tempDate} style={styles.calendarButton}>
-                            <Text style={[styles.calendarButtonText, { fontWeight: 'bold' }, !tempDate && styles.disabledCalendarButtonText]}>Done</Text>
-                         </TouchableOpacity>
+                    <View style={styles.calendarWrapper}>
+                        <Calendar
+                            theme={calendarTheme}
+                            onDayPress={onDayPress}
+                            markedDates={getMarkedDates()}
+                            minDate={toLocalDateString(datePickerType === 'end' ? startDate : new Date())}
+                            current={toLocalDateString(initialCalendarDate)}
+                            hideExtraDays={true}
+                        />
+                        <View style={styles.calendarButtons}>
+                            <TouchableOpacity onPress={() => setCalendarVisible(false)} style={styles.calendarButton}>
+                                <Text style={[styles.calendarButtonText, { color: '#FF3B30' }]}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleDone} disabled={!tempDate} style={styles.calendarButton}>
+                                <Text style={[styles.calendarButtonText, { fontWeight: 'bold' }, !tempDate && styles.disabledCalendarButtonText]}>Done</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </SafeAreaView>
             </Modal>
@@ -437,7 +248,11 @@ const styles = StyleSheet.create({
     calendarSafeArea: {
         flex: 1,
         backgroundColor: 'white',
-        paddingTop: 200,
+        justifyContent: 'center',
+    },
+    calendarWrapper: {
+        height: 420,
+        width: '100%',
     },
     calendarButtons: {
         flexDirection: 'row',

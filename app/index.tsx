@@ -36,18 +36,18 @@ interface MapboxSuggestion { name: string; mapbox_id: string; feature_type: stri
 const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
 
-// VISIBLE CHANGE TEST: Changed text to red to confirm update delivery.
+// The final, polished theme with dark text
 const calendarTheme = {
     backgroundColor: '#ffffff',
     calendarBackground: '#f9f9f9',
-    textSectionTitleColor: 'red', // TEST
+    textSectionTitleColor: '#2d4150',
     selectedDayBackgroundColor: '#007AFF',
     selectedDayTextColor: '#ffffff',
     todayTextColor: '#007AFF',
     dayTextColor: '#2d4150',
     textDisabledColor: '#d9e1e8',
     arrowColor: '#007AFF',
-    monthTextColor: 'red', // TEST
+    monthTextColor: '#2d4150',
     'stylesheet.calendar.header': {
         header: {
             flexDirection: 'row',

@@ -4,6 +4,9 @@
     "slug": "concertfindr",
     "owner": "findr-labs-llc",
     "version": "1.1.1",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -19,9 +22,6 @@
       "buildNumber": "60",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "runtimeVersion": {
-        "policy": "appVersion"
       }
     },
     "android": {
@@ -32,10 +32,8 @@
       "package": "com.concertfindr",
       "versionCode": 99,
       "permissions": [
-        "android.permission.INTERNET",
         "android.permission.INTERNET"
-      ],
-      "runtimeVersion": "1.0.0"
+      ]
     },
     "web": {
       "bundler": "metro",

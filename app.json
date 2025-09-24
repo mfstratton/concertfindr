@@ -19,6 +19,9 @@
       "buildNumber": "60",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "android": {
@@ -29,8 +32,10 @@
       "package": "com.concertfindr",
       "versionCode": 99,
       "permissions": [
+        "android.permission.INTERNET",
         "android.permission.INTERNET"
-      ]
+      ],
+      "runtimeVersion": "1.0.0"
     },
     "web": {
       "bundler": "metro",
@@ -57,6 +62,9 @@
       "eas": {
         "projectId": "92a86582-fd25-40e9-8744-ce5d11743631"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/92a86582-fd25-40e9-8744-ce5d11743631"
     }
   }
 }

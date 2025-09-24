@@ -35,7 +35,31 @@ const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 interface MapboxSuggestion { name: string; mapbox_id: string; feature_type: string; address?: string; full_address?: string; place_formatted?: string; context?: { country?: { id: string; name: string; country_code: string; country_code_alpha_3: string }; region?: { id: string; name: string; region_code?: string; region_code_full?: string }; district?: { id: string; name: string }; }; language?: string; maki?: string; metadata?: any; }
 const GENRE_OPTIONS = ["Alternative", "Blues", "Classical", "Country", "Dance/Electronic", "Folk", "Hip-Hop/Rap", "Jazz", "Latin", "Metal", "New Age", "Pop", "R&B", "Reggae", "Religious", "Rock", "World"];
 const RADIUS_OPTIONS = [5, 10, 20, 30, 40, 60];
-const calendarTheme = { backgroundColor: '#ffffff', calendarBackground: '#f9f9f9', textSectionTitleColor: '#888888', selectedDayBackgroundColor: '#007AFF', selectedDayTextColor: '#ffffff', todayTextColor: '#007AFF', dayTextColor: '#2d4150', textDisabledColor: '#d9e1e8', arrowColor: '#007AFF', monthTextColor: '#2d4150', 'stylesheet.calendar.header': { header: { flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 10, paddingRight: 10, alignItems: 'center', backgroundColor: '#f0f0f0', paddingVertical: 5, } } };
+
+// This is the only part that has been changed from the code you provided.
+const calendarTheme = {
+    backgroundColor: '#ffffff',
+    calendarBackground: '#f9f9f9',
+    textSectionTitleColor: '#2d4150', // Made darker
+    selectedDayBackgroundColor: '#007AFF',
+    selectedDayTextColor: '#ffffff',
+    todayTextColor: '#007AFF',
+    dayTextColor: '#2d4150',
+    textDisabledColor: '#d9e1e8',
+    arrowColor: '#007AFF',
+    monthTextColor: '#2d4150', // Made darker
+    'stylesheet.calendar.header': {
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            paddingLeft: 10,
+            paddingRight: 10,
+            alignItems: 'center',
+            backgroundColor: '#f0f0f0',
+            paddingVertical: 5,
+        }
+    }
+};
 
 
 export default function SearchInputScreen() {

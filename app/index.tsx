@@ -155,7 +155,7 @@ export default function SearchInputScreen() {
                             <Image source={require('../assets/images/icon.png')} style={styles.logo} />
                             <Text style={styles.appNameTitle}>ConcertFindr™</Text>
                         </View>
-                        <Text style={styles.tagline}>All you need is a city and a date.</Text>
+                        <Text style={styles.tagline}>All you need is a city TEST and a date.</Text>
                         <View style={styles.inputContainer}>
                             <TextInput style={styles.input} placeholder="Enter City (e.g., Chicago)" placeholderTextColor="#8e8e93" value={city} onChangeText={handleCityChange} autoCapitalize="words" onFocus={() => { if (!interactionStarted.current) { interactionStarted.current = true; if (!sessionToken) setSessionToken(uuidv4()); } if (selectedMapboxId) setShowSuggestions(false); }} />
                             {city.length > 0 && ( <TouchableOpacity onPress={handleClearCity} style={styles.clearIconTouchable}>

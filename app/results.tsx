@@ -203,6 +203,15 @@ export default function ResultsScreen() {
                     <Button title="Modify Search" onPress={() => router.back()} color="#007AFF" />
                 </View>
 
+                {/* This is the new banner */}
+                {!isLoading && !error && concerts.length > 0 && (
+                    <View style={styles.supportBanner}>
+                        <Text style={styles.supportBannerText}>
+                            Help keep ConcertFindr free and ad-free! Please book through our links to support the app. Thank you!
+                        </Text>
+                    </View>
+                )}
+
                 {isLoading && <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />}
                 {error && <Text style={styles.errorText}>{error}</Text>}
                 {!isLoading && !error && concerts.length === 0 && (
@@ -228,6 +237,19 @@ const styles = StyleSheet.create({
     searchRecapText: { fontSize: 15, color: '#333', textAlign: 'center', },
     searchRecapValue: { fontWeight: 'bold', },
     modifyButtonContainer: { marginBottom: 15, alignItems: 'center', },
+    // New styles for the banner
+    supportBanner: {
+        backgroundColor: '#f0f0f0',
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 15,
+    },
+    supportBannerText: {
+        fontSize: 14,
+        color: '#555',
+        textAlign: 'center',
+        fontStyle: 'italic',
+    },
     loader: { marginTop: 50, },
     errorText: { marginTop: 20, color: '#D32F2F', textAlign: 'center', fontSize: 16, paddingHorizontal: 10, },
     noResultsText: { marginTop: 40, color: '#888', fontStyle: 'italic', textAlign: 'center', fontSize: 16, },

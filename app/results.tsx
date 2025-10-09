@@ -207,8 +207,8 @@ export default function ResultsScreen() {
                 {!isLoading && !error && concerts.length > 0 && (
                     <View style={styles.supportBanner}>
                         <Text style={styles.supportBannerText}>
-                            Help keep ConcertFindr free and ad-free! Please book through our links to support the app. Thank you!
-                        </Text>
+                                Help keep ConcertFindr free & ad-free! Booking via our links supports the app. Enjoy the show!
+                            </Text>
                     </View>
                 )}
 
@@ -237,17 +237,18 @@ const styles = StyleSheet.create({
     searchRecapText: { fontSize: 15, color: '#333', textAlign: 'center', },
     searchRecapValue: { fontWeight: 'bold', },
     modifyButtonContainer: { marginBottom: 15, alignItems: 'center', },
-    // New styles for the banner
+    // Styles for the new banner
     supportBanner: {
         backgroundColor: '#f0f0f0',
         borderRadius: 8,
-        padding: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 10,
         marginBottom: 15,
     },
     supportBannerText: {
         fontSize: 14,
         color: '#555',
-        textAlign: 'center',
+        textAlign: 'center', // This will center the single line of text
         fontStyle: 'italic',
     },
     loader: { marginTop: 50, },
